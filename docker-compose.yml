@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  datastore:
+    image: mongo:latest
+    container_name: mongo_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - data_network
+
+  app:
+    build: .
+    container_name: data_visualization_app
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      - datastore
+    networks:
+      - data_network
+
+networks:
+  data_network:
+    driver: bridge
+
+volumes:
+  mongo_data:
