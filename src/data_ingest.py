@@ -5,15 +5,24 @@ from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 import time
 import logging
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from src.data_store import SocialMediaDataStore
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def mock_data_generator(num_records):
+def mock_data_generator(num_records, data_store=None, start_post_id=None):
     """
     Generate realistic social media mock data
+    
+    Args:
+        num_records: Number of records to generate
+        data_store: Optional SocialMediaDataStore instance to get current count
+        start_post_id: Optional starting post_id (if not provided, will get from database)
     """
     platforms = ["Facebook", "Twitter", "Instagram", "LinkedIn"]
     post_types = ["text", "image", "video", "poll", "carousel", "story"]
@@ -38,8 +47,25 @@ def mock_data_generator(num_records):
         "story": {"likes": 0.9, "comments": 0.7, "shares": 0.6}
     }
 
+    # Determine starting post_id
+    if start_post_id is not None:
+        current_post_id = start_post_id
+        logger.info(f"Using provided start_post_id: {current_post_id}")
+    elif data_store is not None:
+        try:
+            # Get maximum post_id from database using the efficient method
+            max_post_id = data_store.get_max_post_id()
+            current_post_id = max_post_id + 1
+            logger.info(f"Continuing from post_id: {current_post_id} (max found: {max_post_id})")
+        except Exception as e:
+            logger.warning(f"Could not get maximum post_id: {e}. Starting from post_id: 1")
+            current_post_id = 1
+    else:
+        current_post_id = 1
+        logger.info("No data_store provided, starting from post_id: 1")
+
     data = []
-    for _ in range(num_records):
+    for i in range(num_records):
         platform = random.choice(platforms)
         post_type = random.choice(post_types)
         
@@ -77,7 +103,7 @@ def mock_data_generator(num_records):
             sentiment_score = random.choices(sentiment_scores, weights=[0.3, 0.3, 0.4])[0]
 
         data.append({
-            "post_id": len(data) + 1,  # Add post_id for consistency
+            "post_id": current_post_id + i,  # Continue from current count
             "platform": platform,
             "post_type": post_type,
             "post_time": post_time.isoformat(),
@@ -171,7 +197,7 @@ def schedule_data_insertion(data_store: SocialMediaDataStore, interval_minutes=5
         try:
             # Generate 10-50 new records each time
             num_records = random.randint(10, 50)
-            df = mock_data_generator(num_records)
+            df = mock_data_generator(num_records, data_store=data_store)
             
             if insert_data_to_mongodb(data_store, df):
                 logger.info(f"Real-time update: Added {num_records} new records using data_store")
@@ -216,7 +242,7 @@ def main():
     
     # Generate initial data
     logger.info("Generating initial mock data...")
-    initial_df = mock_data_generator(1000)  # Generate 1000 initial records
+    initial_df = mock_data_generator(100, data_store=data_store)  # Generate 100 initial records
     
     # Insert initial data using data_store
     if insert_data_to_mongodb(data_store, initial_df):

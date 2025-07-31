@@ -406,6 +406,59 @@ class SocialMediaDataStore:
         except Exception as e:
             logger.error(f"Failed to get statistics: {e}")
             return {}
+        
+    # Get count of elements in the collection
+    def get_count(self) -> int:
+        """
+        Get the count of elements in the collection.
+        
+        Returns:
+            int: Number of elements in the collection
+        """
+        logger.info("Attempting to get count of elements in the collection")
+        try:
+            if self.collection is None:
+                logger.error("Database not connected. Call connect() first.")
+                return 0
+                
+            count = self.collection.count_documents({})
+            logger.info(f"Successfully counted {count} elements in the collection")
+            return count
+        except Exception as e:
+            logger.error(f"Failed to get count of elements: {e}")
+            return 0
+    
+    def get_max_post_id(self) -> int:
+        """
+        Get the maximum post_id from the collection.
+        
+        Returns:
+            int: Maximum post_id value, or 0 if no documents exist
+        """
+        logger.info("Attempting to get maximum post_id from the collection")
+        try:
+            if self.collection is None:
+                logger.error("Database not connected. Call connect() first.")
+                return 0
+                
+            # Find the document with the highest post_id
+            max_doc = self.collection.find_one(
+                {}, 
+                sort=[('post_id', -1)]
+            )
+            
+            if max_doc and 'post_id' in max_doc:
+                max_post_id = max_doc['post_id']
+                logger.info(f"Successfully found maximum post_id: {max_post_id}")
+                return max_post_id
+            else:
+                logger.info("No documents found or no post_id field, returning 0")
+                return 0
+        except Exception as e:
+            logger.error(f"Failed to get maximum post_id: {e}")
+            return 0
+    
+
     
     def get_trends(self) -> List[Dict]:
         """
