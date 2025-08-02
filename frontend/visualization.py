@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import pandas as pd
+import plotly.express as px
 import time
 import json
 from datetime import datetime
@@ -53,6 +54,23 @@ class DashboardApp:
             logger.error(f"Unexpected error in API call: {e}")
             return None
     
+    def call_api_with_error_handling(self, endpoint, error_message, data_key=None):
+        """Generic API call method with error handling"""
+        try:
+            response = self.call_api(endpoint, method='GET')
+            
+            if response and response.get('success'):
+                if data_key:
+                    return response.get(data_key, [])
+                return response
+            else:
+                st.error(f"❌ {error_message}")
+                return None
+                
+        except Exception as e:
+            st.error(f"❌ Error: {str(e)}")
+            return None
+    
     def perform_initial_setup(self):
         """Perform initial setup by calling the smart ingest endpoint"""
         try:
@@ -102,20 +120,19 @@ class DashboardApp:
     
     def get_database_stats(self):
         """Get database statistics"""
-        try:
-            response = self.call_api('/api/stats', method='GET')
-            
-            if response and response.get('success'):
-                self.session_state.last_stats = response
-                self.session_state.last_update = datetime.now()
-                return response
-            else:
-                st.error("❌ Failed to retrieve database statistics")
-                return None
-                
-        except Exception as e:
-            st.error(f"❌ Error getting stats: {str(e)}")
-            return None
+        response = self.call_api_with_error_handling('/api/stats', 'Failed to retrieve database statistics')
+        if response:
+            self.session_state.last_stats = response
+            self.session_state.last_update = datetime.now()
+        return response
+    
+    def get_platform_engagement(self):
+        """Get platform engagement data"""
+        return self.call_api_with_error_handling('/api/platform-engagement', 'Failed to retrieve platform engagement data', 'platform_engagement')
+    
+    def get_engagement_by_day(self):
+        """Get engagement by day data"""
+        return self.call_api_with_error_handling('/api/engagement-by-day', 'Failed to retrieve engagement by day data', 'engagement_by_day')
     
     def display_kpi_metrics(self, stats_data):
         """Display KPI metrics"""
@@ -170,6 +187,93 @@ class DashboardApp:
                 value=platform_counts.get('Instagram', 0),
                 delta=None
             )
+    
+    def create_engagement_chart(self, data, chart_type, title, x_col, y_col, color_map):
+        """Generic method to create engagement charts"""
+        if not data:
+            st.warning(f"⚠️ No {chart_type} data available")
+            return
+        
+        try:
+            # Convert to DataFrame for easier manipulation
+            df = pd.DataFrame(data)
+            
+            # Create a long format DataFrame for plotting
+            chart_data = []
+            for _, row in df.iterrows():
+                category = row['_id']
+                if chart_type == 'platform':
+                    chart_data.extend([
+                        {x_col: category, 'Engagement Type': 'Likes', 'Count': row['total_likes']},
+                        {x_col: category, 'Engagement Type': 'Comments', 'Count': row['total_comments']},
+                        {x_col: category, 'Engagement Type': 'Shares', 'Count': row['total_shares']}
+                    ])
+                else:  # day chart
+                    chart_data.extend([
+                        {x_col: category, 'Engagement Type': 'Average Likes', 'Count': round(row['avg_likes'], 2)},
+                        {x_col: category, 'Engagement Type': 'Average Comments', 'Count': round(row['avg_comments'], 2)},
+                        {x_col: category, 'Engagement Type': 'Average Shares', 'Count': round(row['avg_shares'], 2)}
+                    ])
+            
+            chart_df = pd.DataFrame(chart_data)
+            
+            # Create the bar chart
+            fig = px.bar(
+                chart_df,
+                x=x_col,
+                y='Count',
+                color='Engagement Type',
+                title=title,
+                barmode='group',
+                color_discrete_map=color_map
+            )
+            
+            # Update layout for better appearance
+            fig.update_layout(
+                xaxis_title=x_col,
+                yaxis_title="Count",
+                legend_title="Engagement Type",
+                height=500,
+                showlegend=True
+            )
+            
+            # Display the chart
+            st.plotly_chart(fig, use_container_width=True)
+            
+        except Exception as e:
+            st.error(f"❌ Error creating {chart_type} chart: {str(e)}")
+    
+    def display_platform_engagement_chart(self, engagement_data):
+        """Display platform engagement bar chart"""
+        color_map = {
+            'Likes': '#1f77b4',
+            'Comments': '#ff7f0e', 
+            'Shares': '#2ca02c'
+        }
+        self.create_engagement_chart(
+            engagement_data, 
+            'platform', 
+            '📊 Total Engagement by Platform',
+            'Platform',
+            'Count',
+            color_map
+        )
+    
+    def display_engagement_by_day_chart(self, day_data):
+        """Display average engagement by day of the week chart"""
+        color_map = {
+            'Average Likes': '#1f77b4',
+            'Average Comments': '#ff7f0e', 
+            'Average Shares': '#2ca02c'
+        }
+        self.create_engagement_chart(
+            day_data, 
+            'day', 
+            '📅 Average Engagement by Day of the Week',
+            'Day',
+            'Count',
+            color_map
+        )
     
 
     
@@ -244,6 +348,31 @@ class DashboardApp:
             # Last update info
             if self.session_state.last_update:
                 st.caption(f"Last updated: {self.session_state.last_update.strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        # Get engagement data for both charts
+        engagement_data = self.get_platform_engagement()
+        day_data = self.get_engagement_by_day()
+        
+        # Display charts side by side
+        if engagement_data or day_data:
+            st.subheader("📊 Engagement Analytics")
+            
+            # Create two columns for side-by-side display
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if engagement_data:
+                    st.subheader("📊 Total Engagement by Platform")
+                    self.display_platform_engagement_chart(engagement_data)
+                else:
+                    st.warning("⚠️ No platform engagement data available")
+            
+            with col2:
+                if day_data:
+                    st.subheader("📅 Average Engagement by Day")
+                    self.display_engagement_by_day_chart(day_data)
+                else:
+                    st.warning("⚠️ No engagement by day data available")
         
 
         
