@@ -519,7 +519,47 @@ class SocialMediaDataStore:
         except Exception as e:
             logger.error(f"Failed to get engagement by day: {e}")
             return []
-    
+
+    def get_sentiment_by_platform(self) -> List[Dict]:
+        """
+        Get sentiment distribution by platform.
+        
+        Returns:
+            List[Dict]: Platform sentiment data with counts for positive, negative, and neutral
+        """
+        logger.info("Attempting to get sentiment by platform statistics")
+        try:
+            if self.collection is None:
+                logger.error("Database not connected. Call connect() first.")
+                return []
+                
+            pipeline = [
+                {'$group': {
+                    '_id': {
+                        'platform': '$platform',
+                        'sentiment': '$sentiment_score'
+                    },
+                    'count': {'$sum': 1}
+                }},
+                {'$group': {
+                    '_id': '$_id.platform',
+                    'sentiments': {
+                        '$push': {
+                            'sentiment': '$_id.sentiment',
+                            'count': '$count'
+                        }
+                    },
+                    'total_posts': {'$sum': '$count'}
+                }},
+                {'$sort': {'_id': 1}}
+            ]
+            
+            results = list(self.collection.aggregate(pipeline))
+            logger.info(f"Successfully retrieved sentiment by platform: {results}")
+            return results
+        except Exception as e:
+            logger.error(f"Failed to get sentiment by platform: {e}")
+            return []
 
     
 

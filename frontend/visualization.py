@@ -134,6 +134,10 @@ class DashboardApp:
         """Get engagement by day data"""
         return self.call_api_with_error_handling('/api/engagement-by-day', 'Failed to retrieve engagement by day data', 'engagement_by_day')
     
+    def get_sentiment_by_platform(self):
+        """Get sentiment data by platform"""
+        return self.call_api_with_error_handling('/api/sentiment-by-platform', 'Failed to retrieve sentiment data', 'sentiment_by_platform')
+    
     def display_kpi_metrics(self, stats_data):
         """Display KPI metrics"""
         if not stats_data:
@@ -275,6 +279,110 @@ class DashboardApp:
             color_map
         )
     
+    def create_donut_chart(self, data, platform, title):
+        """Create a donut chart for sentiment distribution"""
+        if not data:
+            st.warning(f"⚠️ No sentiment data available for {platform}")
+            return
+        
+        try:
+            # Find the platform data
+            platform_data = None
+            for item in data:
+                if item['_id'] == platform:
+                    platform_data = item
+                    break
+            
+            if not platform_data:
+                st.warning(f"⚠️ No data available for {platform}")
+                return
+            
+            # Extract sentiment data
+            sentiments = platform_data.get('sentiments', [])
+            if not sentiments:
+                st.warning(f"⚠️ No sentiment data for {platform}")
+                return
+            
+            # Create data for the donut chart
+            labels = []
+            values = []
+            colors = []
+            
+            for sentiment_info in sentiments:
+                sentiment = sentiment_info.get('sentiment', 'Unknown')
+                count = sentiment_info.get('count', 0)
+                
+                if count > 0:  # Only include sentiments with data
+                    labels.append(sentiment.title())
+                    values.append(count)
+                    
+                    # Assign colors based on sentiment
+                    if sentiment.lower() == 'positive':
+                        colors.append('#1f77b4')  # Blue
+                    elif sentiment.lower() == 'negative':
+                        colors.append('#FFA500')  # Orange
+                    elif sentiment.lower() == 'neutral':
+                        colors.append('#2ca02c')  # Green
+                    else:
+                        colors.append('#7f7f7f')  # Gray
+            
+            if not values:
+                st.warning(f"⚠️ No valid sentiment data for {platform}")
+                return
+            
+            # Create the donut chart
+            fig = px.pie(
+                values=values,
+                names=labels,
+                title=title,
+                color_discrete_sequence=colors,
+                hole=0.6  # This creates the donut effect
+            )
+            
+            # Update layout for better appearance
+            fig.update_layout(
+                height=300,
+                showlegend=True,
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="right",
+                    x=1
+                )
+            )
+            
+            # Display the chart
+            st.plotly_chart(fig, use_container_width=True)
+            
+        except Exception as e:
+            st.error(f"❌ Error creating donut chart for {platform}: {str(e)}")
+    
+    def display_sentiment_donut_charts(self, sentiment_data):
+        """Display sentiment donut charts for all platforms"""
+        if not sentiment_data:
+            st.warning("⚠️ No sentiment data available")
+            return
+        
+        st.subheader("📊 Sentiment Distribution by Platform")
+        
+        # Create four columns for the four platforms
+        col1, col2, col3, col4 = st.columns(4)
+        
+        platforms = ['Facebook', 'Twitter', 'LinkedIn', 'Instagram']
+        
+        with col1:
+            self.create_donut_chart(sentiment_data, 'Facebook', '📘 Facebook Sentiment')
+        
+        with col2:
+            self.create_donut_chart(sentiment_data, 'Twitter', '🐦 Twitter Sentiment')
+        
+        with col3:
+            self.create_donut_chart(sentiment_data, 'LinkedIn', '💼 LinkedIn Sentiment')
+        
+        with col4:
+            self.create_donut_chart(sentiment_data, 'Instagram', '📷 Instagram Sentiment')
+    
 
     
     def run(self):
@@ -352,6 +460,7 @@ class DashboardApp:
         # Get engagement data for both charts
         engagement_data = self.get_platform_engagement()
         day_data = self.get_engagement_by_day()
+        sentiment_data = self.get_sentiment_by_platform()
         
         # Display charts side by side
         if engagement_data or day_data:
@@ -373,6 +482,10 @@ class DashboardApp:
                     self.display_engagement_by_day_chart(day_data)
                 else:
                     st.warning("⚠️ No engagement by day data available")
+        
+        # Display sentiment donut charts
+        if sentiment_data:
+            self.display_sentiment_donut_charts(sentiment_data)
         
 
         

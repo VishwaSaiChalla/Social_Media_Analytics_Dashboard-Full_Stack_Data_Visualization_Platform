@@ -242,6 +242,21 @@ class BackendApp:
             except Exception as e:
                 logger.error(f"Error getting engagement by day: {e}")
                 return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/sentiment-by-platform', methods=['GET'])
+        def get_sentiment_by_platform():
+            """Get sentiment distribution by platform"""
+            try:
+                sentiment_data = self.data_store.get_sentiment_by_platform()
+                
+                return jsonify({
+                    'success': True,
+                    'sentiment_by_platform': sentiment_data
+                })
+                
+            except Exception as e:
+                logger.error(f"Error getting sentiment by platform: {e}")
+                return jsonify({'error': str(e)}), 500
         
 
     
