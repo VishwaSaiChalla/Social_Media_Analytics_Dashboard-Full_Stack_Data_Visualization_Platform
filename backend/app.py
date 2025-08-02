@@ -213,6 +213,51 @@ class BackendApp:
                 logger.error(f"Error getting stats: {e}")
                 return jsonify({'error': str(e)}), 500
         
+        @self.app.route('/api/platform-engagement', methods=['GET'])
+        def get_platform_engagement():
+            """Get total engagement by platform"""
+            try:
+                engagement_data = self.data_store.get_platform_engagement()
+                
+                return jsonify({
+                    'success': True,
+                    'platform_engagement': engagement_data
+                })
+                
+            except Exception as e:
+                logger.error(f"Error getting platform engagement: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/engagement-by-day', methods=['GET'])
+        def get_engagement_by_day():
+            """Get average engagement by day of the week"""
+            try:
+                day_data = self.data_store.get_engagement_by_day()
+                
+                return jsonify({
+                    'success': True,
+                    'engagement_by_day': day_data
+                })
+                
+            except Exception as e:
+                logger.error(f"Error getting engagement by day: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/sentiment-by-platform', methods=['GET'])
+        def get_sentiment_by_platform():
+            """Get sentiment distribution by platform"""
+            try:
+                sentiment_data = self.data_store.get_sentiment_by_platform()
+                
+                return jsonify({
+                    'success': True,
+                    'sentiment_by_platform': sentiment_data
+                })
+                
+            except Exception as e:
+                logger.error(f"Error getting sentiment by platform: {e}")
+                return jsonify({'error': str(e)}), 500
+        
 
     
     def run(self, host='0.0.0.0', port=5000, debug=False):

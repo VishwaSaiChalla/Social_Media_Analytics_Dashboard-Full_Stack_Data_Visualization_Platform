@@ -458,6 +458,108 @@ class SocialMediaDataStore:
             logger.error(f"Failed to get maximum post_id: {e}")
             return 0
     
+    def get_platform_engagement(self) -> List[Dict]:
+        """
+        Get total engagement (likes, comments, shares) by platform.
+        
+        Returns:
+            List[Dict]: Platform engagement data with total likes, comments, and shares
+        """
+        logger.info("Attempting to get platform engagement statistics")
+        try:
+            if self.collection is None:
+                logger.error("Database not connected. Call connect() first.")
+                return []
+                
+            pipeline = [
+                {'$group': {
+                    '_id': '$platform',
+                    'total_likes': {'$sum': '$likes'},
+                    'total_comments': {'$sum': '$comments'},
+                    'total_shares': {'$sum': '$shares'},
+                    'post_count': {'$sum': 1}
+                }},
+                {'$sort': {'total_likes': -1}}
+            ]
+            
+            results = list(self.collection.aggregate(pipeline))
+            logger.info(f"Successfully retrieved platform engagement data: {results}")
+            return results
+        except Exception as e:
+            logger.error(f"Failed to get platform engagement: {e}")
+            return []
+    
+    def get_engagement_by_day(self) -> List[Dict]:
+        """
+        Get average engagement (likes, comments, shares) by day of the week.
+        
+        Returns:
+            List[Dict]: Average engagement data by day of the week
+        """
+        logger.info("Attempting to get engagement by day statistics")
+        try:
+            if self.collection is None:
+                logger.error("Database not connected. Call connect() first.")
+                return []
+                
+            pipeline = [
+                {'$group': {
+                    '_id': '$post_day',
+                    'avg_likes': {'$avg': '$likes'},
+                    'avg_comments': {'$avg': '$comments'},
+                    'avg_shares': {'$avg': '$shares'},
+                    'post_count': {'$sum': 1}
+                }},
+                {'$sort': {'_id': 1}}
+            ]
+            
+            results = list(self.collection.aggregate(pipeline))
+            logger.info(f"Successfully retrieved engagement by day data: {results}")
+            return results
+        except Exception as e:
+            logger.error(f"Failed to get engagement by day: {e}")
+            return []
+
+    def get_sentiment_by_platform(self) -> List[Dict]:
+        """
+        Get sentiment distribution by platform.
+        
+        Returns:
+            List[Dict]: Platform sentiment data with counts for positive, negative, and neutral
+        """
+        logger.info("Attempting to get sentiment by platform statistics")
+        try:
+            if self.collection is None:
+                logger.error("Database not connected. Call connect() first.")
+                return []
+                
+            pipeline = [
+                {'$group': {
+                    '_id': {
+                        'platform': '$platform',
+                        'sentiment': '$sentiment_score'
+                    },
+                    'count': {'$sum': 1}
+                }},
+                {'$group': {
+                    '_id': '$_id.platform',
+                    'sentiments': {
+                        '$push': {
+                            'sentiment': '$_id.sentiment',
+                            'count': '$count'
+                        }
+                    },
+                    'total_posts': {'$sum': '$count'}
+                }},
+                {'$sort': {'_id': 1}}
+            ]
+            
+            results = list(self.collection.aggregate(pipeline))
+            logger.info(f"Successfully retrieved sentiment by platform: {results}")
+            return results
+        except Exception as e:
+            logger.error(f"Failed to get sentiment by platform: {e}")
+            return []
 
     
 
