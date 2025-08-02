@@ -12,22 +12,35 @@ services:
       - data_network
     environment:
       - MONGO_INITDB_DATABASE=social_media_analysis_db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   backend:
     build: .
     container_name: data_visualization_backend
     volumes:
       - ./backend:/app/backend
-      - ./src:/app/src
     ports:
       - "5000:5000"
     depends_on:
-      - datastore
+      datastore:
+        condition: service_healthy
     networks:
       - data_network
     environment:
       - FLASK_ENV=development
       - MONGODB_URI=mongodb://datastore:27017/
+    command: python backend/app.py
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   frontend:
     build: .
@@ -37,26 +50,15 @@ services:
     ports:
       - "8501:8501"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - data_network
     environment:
       - STREAMLIT_SERVER_PORT=8501
       - STREAMLIT_SERVER_ADDRESS=0.0.0.0
-    command: streamlit run frontend/streamlit_app.py --server.port 8501 --server.address 0.0.0.0
-
-  data_ingestion:
-    build: .
-    container_name: data_ingestion_service
-    volumes:
-      - ./src:/app/src
-    depends_on:
-      - datastore
-    networks:
-      - data_network
-    environment:
-      - MONGODB_URI=mongodb://datastore:27017/
-    command: python src/data_ingest.py
+      - BACKEND_API_URL=http://backend:5000
+    command: streamlit run frontend/visualization.py --server.port 8501 --server.address 0.0.0.0
 
 networks:
   data_network:

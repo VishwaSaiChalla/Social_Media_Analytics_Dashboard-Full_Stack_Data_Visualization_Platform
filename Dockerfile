@@ -85,7 +85,7 @@ fi\n\
 \n\
 # Initialize database and collections\n\
 echo "📊 Initializing database..."\n\
-cd /app/src && python -c "\n\
+cd /app/backend && python -c "\n\
 from data_store import SocialMediaDataStore\n\
 data_store = SocialMediaDataStore()\n\
 if data_store.connect():\n\
@@ -98,7 +98,7 @@ else:\n\
 \n\
 # Start data ingestion in background\n\
 echo "📊 Starting data ingestion..."\n\
-cd /app/src && python data_ingest.py &\n\
+cd /app/backend && python data_ingest.py &\n\
 INGESTION_PID=$!\n\
 echo "✅ Data ingestion started (PID: $INGESTION_PID)"\n\
 \n\
@@ -120,7 +120,7 @@ fi\n\
 \n\
 # Start the Streamlit frontend\n\
 echo "🎨 Starting Streamlit frontend..."\n\
-cd /app/frontend && streamlit run streamlit_app.py --server.port 8501 --server.address 0.0.0.0 &\n\
+cd /app/frontend && streamlit run visualization.py --server.port 8501 --server.address 0.0.0.0 &\n\
 FRONTEND_PID=$!\n\
 echo "✅ Streamlit frontend started (PID: $FRONTEND_PID)"\n\
 \n\

@@ -460,6 +460,8 @@ class SocialMediaDataStore:
     
 
     
+
+    
     def get_trends(self) -> List[Dict]:
         """
         Get time-based trends from the collection.
@@ -497,6 +499,29 @@ class SocialMediaDataStore:
             return trends
         except Exception as e:
             logger.error(f"Failed to get trends: {e}")
+            return []
+    
+    def aggregate(self, pipeline: List[Dict]) -> List[Dict]:
+        """
+        Execute an aggregation pipeline on the collection.
+        
+        Args:
+            pipeline: MongoDB aggregation pipeline
+            
+        Returns:
+            List[Dict]: Aggregation results
+        """
+        logger.info(f"Executing aggregation pipeline with {len(pipeline)} stages")
+        try:
+            if self.collection is None:
+                logger.error("Database not connected. Call connect() first.")
+                return []
+                
+            results = list(self.collection.aggregate(pipeline))
+            logger.info(f"Successfully executed aggregation pipeline, returned {len(results)} results")
+            return results
+        except Exception as e:
+            logger.error(f"Failed to execute aggregation pipeline: {e}")
             return []
     
     def find_by_platform(self, platform: str) -> List[Dict]:

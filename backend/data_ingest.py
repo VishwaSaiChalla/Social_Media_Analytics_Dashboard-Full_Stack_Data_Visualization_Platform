@@ -9,7 +9,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.data_store import SocialMediaDataStore
+from backend.data_store import SocialMediaDataStore
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -115,46 +115,6 @@ def mock_data_generator(num_records, data_store=None, start_post_id=None):
         })
 
     return pd.DataFrame(data)
-
-def ingest_data_from_csv(file_path: str, data_store: SocialMediaDataStore) -> bool:
-    """
-    Ingests data from a CSV file into the MongoDB collection using data_store.
-    
-    Args:
-        file_path: The path to the CSV file containing the data.
-        data_store: Instance of SocialMediaDataStore
-        
-    Returns:
-        bool: True if ingestion successful
-    """
-    logger.info(f"Attempting to ingest data from CSV file: {file_path}")
-    try:
-        # Read the CSV file into a DataFrame
-        logger.debug(f"Reading CSV file: {file_path}")
-        df = pd.read_csv(file_path)
-        logger.info(f"Successfully read CSV file with {len(df)} rows and {len(df.columns)} columns")
-        logger.debug(f"CSV columns: {list(df.columns)}")
-        
-        # Convert post_time to ISO 8601 string
-        logger.debug("Converting post_time to ISO 8601 format")
-        df['post_time'] = pd.to_datetime(df['post_time']).dt.strftime('%Y-%m-%dT%H:%M:%S')
-
-        # Convert DataFrame to dictionary format for MongoDB insertion
-        data_dict = df.to_dict("records")
-        logger.info(f"Converted DataFrame to {len(data_dict)} dictionary records")
-
-        # Insert data using data_store
-        success = data_store.insert_data(data_dict)
-        if success:
-            logger.info(f"Successfully inserted {len(data_dict)} documents from {file_path}")
-        else:
-            logger.error(f"Failed to insert data from {file_path}")
-        
-        return success
-        
-    except Exception as e:
-        logger.error(f"Failed to ingest data from CSV {file_path}: {e}")
-        return False
 
 def insert_data_to_mongodb(data_store: SocialMediaDataStore, df: pd.DataFrame) -> bool:
     """
