@@ -176,6 +176,36 @@ class DashboardApp:
         """Get shares data by post type"""
         return self.call_api_with_error_handling('/api/shares-by-post-type', 'Failed to retrieve shares by post type data', 'shares_by_post_type')
 
+    def get_decomposition_tree_data(self, platform_filter=None, post_type_filter=None):
+        """Get decomposition tree data with optional filters"""
+        try:
+            # Build query parameters
+            params = {}
+            if platform_filter:
+                params['platform'] = platform_filter
+            if post_type_filter:
+                params['post_type'] = post_type_filter
+            
+            # Make API call with parameters
+            url = f"{self.api_base_url}/api/decomposition-tree"
+            if params:
+                query_string = '&'.join([f"{k}={v}" for k, v in params.items()])
+                url += f"?{query_string}"
+            
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            if data and data.get('success'):
+                return data.get('decomposition_tree_data', [])
+            else:
+                st.error("❌ Failed to retrieve decomposition tree data")
+                return None
+                
+        except Exception as e:
+            st.error(f"❌ Error: {str(e)}")
+            return None
+
     def display_kpi_metrics(self, stats_data):
         """Display KPI metrics"""
         if not stats_data:
@@ -782,6 +812,51 @@ class DashboardApp:
             
         except Exception as e:
             st.error(f"❌ Error creating shares by post type clustered chart: {str(e)}")
+
+    def create_decomposition_treemap(self, tree_data):
+        """Create a decomposition tree (treemap) visualization"""
+        if not tree_data:
+            st.warning("⚠️ No decomposition tree data available")
+            return
+        
+        try:
+            # Convert to DataFrame for easier manipulation
+            chart_data = []
+            for item in tree_data:
+                chart_data.append({
+                    'Platform': item['_id']['platform'],
+                    'Post Type': item['_id']['post_type'].title(),
+                    'Sentiment Score': item['_id']['sentiment_score'].title(),
+                    'Total Posts': item['total_posts'],
+                    'Total Likes': item['total_likes'],
+                    'Total Comments': item['total_comments'],
+                    'Total Shares': item['total_shares']
+                })
+            
+            df = pd.DataFrame(chart_data)
+            
+            # Create hierarchical structure for treemap
+            # Group by platform, then post type, then sentiment
+            fig = px.treemap(
+                df,
+                path=['Platform', 'Post Type', 'Sentiment Score'],
+                values='Total Posts',
+                title='🌳 Decomposition Tree - Posts by Platform, Post Type, and Sentiment',
+                color='Total Posts',
+                color_continuous_scale='Blues',
+                hover_data=['Total Likes', 'Total Comments', 'Total Shares']
+            )
+            
+            fig.update_layout(
+                height=600,
+                showlegend=False
+            )
+            
+            # Display the chart
+            st.plotly_chart(fig, use_container_width=True)
+            
+        except Exception as e:
+            st.error(f"❌ Error creating decomposition treemap: {str(e)}")
     
 
     
@@ -866,6 +941,7 @@ class DashboardApp:
         average_comments_data = self.get_average_comments_by_date_platform()
         average_shares_data = self.get_average_shares_by_date_platform()
         shares_by_post_type_data = self.get_shares_by_post_type()
+        decomposition_tree_data = self.get_decomposition_tree_data()
 
         # Display engagement charts side by side
         if engagement_data or day_data:
@@ -961,9 +1037,53 @@ class DashboardApp:
                     self.create_average_shares_line_chart(average_shares_data)
                 else:
                     st.warning("⚠️ No average shares data available")
-        
 
+        # Display decomposition treemap with filters
+        st.subheader("🌳 Decomposition Tree Analysis")
         
+        # Add filter controls
+        with st.expander("🔧 Filter Options", expanded=False):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                platform_filter = st.selectbox(
+                    "Select Platform:",
+                    ["All Platforms", "Facebook", "Twitter", "LinkedIn", "Instagram"],
+                    help="Filter by specific platform or view all platforms"
+                )
+            
+            with col2:
+                post_type_filter = st.selectbox(
+                    "Select Post Type:",
+                    ["All Post Types", "carousel", "video", "text", "image", "poll", "story"],
+                    help="Filter by specific post type or view all post types"
+                )
+        
+        # Apply filters
+        selected_platform = None if platform_filter == "All Platforms" else platform_filter
+        selected_post_type = None if post_type_filter == "All Post Types" else post_type_filter
+        
+        # Get filtered decomposition tree data
+        filtered_tree_data = self.get_decomposition_tree_data(
+            platform_filter=selected_platform,
+            post_type_filter=selected_post_type
+        )
+        
+        if filtered_tree_data:
+            # Show filter summary
+            filter_summary = []
+            if selected_platform:
+                filter_summary.append(f"Platform: {selected_platform}")
+            if selected_post_type:
+                filter_summary.append(f"Post Type: {selected_post_type}")
+            
+            if filter_summary:
+                st.info(f"📊 Showing data for: {' | '.join(filter_summary)}")
+            
+            self.create_decomposition_treemap(filtered_tree_data)
+        else:
+            st.warning("⚠️ No data available for the selected filters")
+
         # Auto-refresh functionality
         if auto_refresh:
             time.sleep(30)

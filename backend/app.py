@@ -365,6 +365,28 @@ class BackendApp:
             except Exception as e:
                 logger.error(f"Error getting shares by post type: {e}")
                 return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/decomposition-tree', methods=['GET'])
+        def get_decomposition_tree():
+            """Get decomposition tree data with optional filters"""
+            try:
+                # Get query parameters for filters
+                platform_filter = request.args.get('platform')
+                post_type_filter = request.args.get('post_type')
+                
+                tree_data = self.data_store.get_decomposition_tree_data(
+                    platform_filter=platform_filter,
+                    post_type_filter=post_type_filter
+                )
+                
+                return jsonify({
+                    'success': True,
+                    'decomposition_tree_data': tree_data
+                })
+                
+            except Exception as e:
+                logger.error(f"Error getting decomposition tree data: {e}")
+                return jsonify({'error': str(e)}), 500
         
 
     

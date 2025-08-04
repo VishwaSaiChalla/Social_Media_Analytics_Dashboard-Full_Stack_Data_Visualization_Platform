@@ -744,6 +744,63 @@ class SocialMediaDataStore:
             logger.error(f"Failed to get shares by post type: {e}")
             return []
 
+    def get_decomposition_tree_data(self, platform_filter: str = None, post_type_filter: str = None) -> List[Dict]:
+        """
+        Get hierarchical data for decomposition tree (treemap).
+        
+        Args:
+            platform_filter: Optional platform filter (Facebook, Twitter, LinkedIn, Instagram)
+            post_type_filter: Optional post type filter (carousel, video, text, image, poll, story)
+            
+        Returns:
+            List[Dict]: Hierarchical data for treemap visualization
+        """
+        logger.info("Attempting to get decomposition tree data")
+        try:
+            if self.collection is None:
+                logger.error("Database not connected. Call connect() first.")
+                return []
+            
+            # Build match stage for filters
+            match_stage = {}
+            if platform_filter:
+                match_stage['platform'] = platform_filter
+            if post_type_filter:
+                match_stage['post_type'] = post_type_filter
+            
+            pipeline = []
+            
+            # Add match stage if filters are provided
+            if match_stage:
+                pipeline.append({'$match': match_stage})
+            
+            # Group by platform, post_type, and sentiment_score
+            pipeline.extend([
+                {'$group': {
+                    '_id': {
+                        'platform': '$platform',
+                        'post_type': '$post_type',
+                        'sentiment_score': '$sentiment_score'
+                    },
+                    'total_posts': {'$sum': 1},
+                    'total_likes': {'$sum': '$likes'},
+                    'total_comments': {'$sum': '$comments'},
+                    'total_shares': {'$sum': '$shares'}
+                }},
+                {'$sort': {
+                    '_id.platform': 1,
+                    '_id.post_type': 1,
+                    '_id.sentiment_score': 1
+                }}
+            ])
+            
+            results = list(self.collection.aggregate(pipeline))
+            logger.info(f"Successfully retrieved decomposition tree data: {len(results)} records")
+            return results
+        except Exception as e:
+            logger.error(f"Failed to get decomposition tree data: {e}")
+            return []
+
     
 
     
