@@ -138,6 +138,10 @@ class DashboardApp:
         """Get sentiment data by platform"""
         return self.call_api_with_error_handling('/api/sentiment-by-platform', 'Failed to retrieve sentiment data', 'sentiment_by_platform')
     
+    def get_sentiment_by_post_type(self):
+        """Get sentiment data by post type"""
+        return self.call_api_with_error_handling('/api/sentiment-by-post-type', 'Failed to retrieve sentiment by post type data', 'sentiment_by_post_type')
+    
     def display_kpi_metrics(self, stats_data):
         """Display KPI metrics"""
         if not stats_data:
@@ -396,8 +400,8 @@ class DashboardApp:
             # Create stacked bar chart
             fig = px.bar(
                 df,
-                x='Platform',
-                y='Count',
+                x='Count',
+                y='Platform',
                 color='Sentiment',
                 title='📊 Sentiment Distribution by Platform (Stacked Bar Chart)',
                 barmode='stack',
@@ -410,8 +414,8 @@ class DashboardApp:
             
             # Update layout for better appearance
             fig.update_layout(
-                xaxis_title="Platform",
-                yaxis_title="Number of Posts",
+                xaxis_title="Number of Posts",
+                yaxis_title="Platform",
                 legend_title="Sentiment",
                 height=500,
                 showlegend=True,
@@ -423,6 +427,72 @@ class DashboardApp:
             
         except Exception as e:
             st.error(f"❌ Error creating stacked bar chart: {str(e)}")
+    
+    def create_sentiment_stacked_column_chart(self, sentiment_data):
+        """Create a stacked column chart for sentiment scores by post type"""
+        if not sentiment_data:
+            st.warning("⚠️ No sentiment data available")
+            return
+        
+        try:
+            # Prepare data for stacked column chart
+            chart_data = []
+            post_types = ['carousel', 'video', 'text', 'image', 'poll', 'story']
+            sentiments = ['positive', 'negative', 'neutral']
+            
+            # Initialize data structure
+            for post_type in post_types:
+                post_type_data = next((item for item in sentiment_data if item['_id'] == post_type), None)
+                if post_type_data:
+                    sentiments_dict = {s['sentiment']: s['count'] for s in post_type_data.get('sentiments', [])}
+                    for sentiment in sentiments:
+                        chart_data.append({
+                            'Post Type': post_type.title(),
+                            'Sentiment': sentiment.title(),
+                            'Count': sentiments_dict.get(sentiment, 0)
+                        })
+                else:
+                    # If no data for post type, add zeros
+                    for sentiment in sentiments:
+                        chart_data.append({
+                            'Post Type': post_type.title(),
+                            'Sentiment': sentiment.title(),
+                            'Count': 0
+                        })
+            
+            # Create DataFrame
+            df = pd.DataFrame(chart_data)
+            
+            # Create stacked column chart
+            fig = px.bar(
+                df,
+                x='Post Type',
+                y='Count',
+                color='Sentiment',
+                title='📊 Sentiment Distribution by Post Type (Stacked Column Chart)',
+                barmode='stack',
+                color_discrete_map={
+                    'Positive': '#1f77b4',  # Blue
+                    'Negative': '#FFA500',  # Orange
+                    'Neutral': '#2ca02c'    # Green
+                }
+            )
+            
+            # Update layout for better appearance
+            fig.update_layout(
+                xaxis_title="Post Type",
+                yaxis_title="Number of Posts",
+                legend_title="Sentiment",
+                height=500,
+                showlegend=True,
+                barmode='stack'
+            )
+            
+            # Display the chart
+            st.plotly_chart(fig, use_container_width=True)
+            
+        except Exception as e:
+            st.error(f"❌ Error creating stacked column chart: {str(e)}")
     
     def display_sentiment_donut_charts(self, sentiment_data):
         """Display sentiment donut charts for all platforms"""
@@ -527,6 +597,7 @@ class DashboardApp:
         engagement_data = self.get_platform_engagement()
         day_data = self.get_engagement_by_day()
         sentiment_data = self.get_sentiment_by_platform()
+        sentiment_by_post_type_data = self.get_sentiment_by_post_type()
         
         # Display charts side by side
         if engagement_data or day_data:
@@ -550,14 +621,29 @@ class DashboardApp:
                     st.warning("⚠️ No engagement by day data available")
         
         # Display sentiment charts
-        if sentiment_data:
+        if sentiment_data or sentiment_by_post_type_data:
             st.subheader("📊 Sentiment Analysis")
             
-            # Display stacked bar chart first
-            self.create_sentiment_stacked_bar_chart(sentiment_data)
+            # Display stacked charts side by side
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if sentiment_data:
+                    st.subheader("📊 Sentiment by Platform")
+                    self.create_sentiment_stacked_bar_chart(sentiment_data)
+                else:
+                    st.warning("⚠️ No sentiment by platform data available")
+            
+            with col2:
+                if sentiment_by_post_type_data:
+                    st.subheader("📊 Sentiment by Post Type")
+                    self.create_sentiment_stacked_column_chart(sentiment_by_post_type_data)
+                else:
+                    st.warning("⚠️ No sentiment by post type data available")
             
             # Display donut charts below
-            self.display_sentiment_donut_charts(sentiment_data)
+            if sentiment_data:
+                self.display_sentiment_donut_charts(sentiment_data)
         
 
         
