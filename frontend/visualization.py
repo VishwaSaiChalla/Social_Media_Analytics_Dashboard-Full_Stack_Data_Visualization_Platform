@@ -72,26 +72,44 @@ class DashboardApp:
             return None
     
     def perform_initial_setup(self):
-        """Perform initial setup by calling the smart ingest endpoint"""
+        """Perform initial setup by checking database status and ingesting data if needed"""
         try:
             st.info("🔄 Checking database and performing initial setup...")
             
-            response = self.call_api('/api/ingest-csv', method='POST')
+            # First check if database has data
+            health_response = self.call_api('/health', method='GET')
             
-            if response and response.get('success'):
-                self.session_state.data_ingested = True
-                self.session_state.initial_setup_done = True
+            if health_response and health_response.get('database_connected'):
+                total_records = health_response.get('total_records', 0)
                 
-                # Show appropriate message based on whether ingestion was performed
-                if response.get('ingestion_performed', False):
-                    st.success(f"✅ {response.get('message', 'Initial data ingestion completed!')}")
+                if total_records > 0:
+                    # Database already has data
+                    self.session_state.data_ingested = True
+                    self.session_state.initial_setup_done = True
+                    st.success(f"✅ Database is ready with {total_records} records")
+                    return True
                 else:
-                    st.info(f"ℹ️ {response.get('message', 'Database already has data.')}")
-                
-                return True
+                    # Database is empty, try to ingest CSV data
+                    st.info("📥 Database is empty. Attempting to ingest CSV data...")
+                    response = self.call_api('/api/ingest-csv', method='POST')
+                    
+                    if response and response.get('success'):
+                        self.session_state.data_ingested = True
+                        self.session_state.initial_setup_done = True
+                        
+                        # Show appropriate message based on whether ingestion was performed
+                        if response.get('ingestion_performed', False):
+                            st.success(f"✅ {response.get('message', 'Initial data ingestion completed!')}")
+                        else:
+                            st.info(f"ℹ️ {response.get('message', 'Database already has data.')}")
+                        
+                        return True
+                    else:
+                        error_msg = response.get('error', 'Failed to setup database') if response else 'API call failed'
+                        st.error(f"❌ {error_msg}")
+                        return False
             else:
-                error_msg = response.get('error', 'Failed to setup database') if response else 'API call failed'
-                st.error(f"❌ {error_msg}")
+                st.error("❌ Database connection failed. Please check MongoDB connection.")
                 return False
                 
         except Exception as e:
@@ -141,6 +159,10 @@ class DashboardApp:
     def get_sentiment_by_post_type(self):
         """Get sentiment data by post type"""
         return self.call_api_with_error_handling('/api/sentiment-by-post-type', 'Failed to retrieve sentiment by post type data', 'sentiment_by_post_type')
+    
+    def get_average_likes_by_date_platform(self):
+        """Get average likes data by date and platform"""
+        return self.call_api_with_error_handling('/api/average-likes-by-date-platform', 'Failed to retrieve average likes by date and platform data', 'average_likes_by_date_platform')
     
     def display_kpi_metrics(self, stats_data):
         """Display KPI metrics"""
@@ -519,6 +541,61 @@ class DashboardApp:
         with col4:
             self.create_donut_chart(sentiment_data, 'Instagram', '📷 Instagram Sentiment')
     
+    def create_average_likes_line_chart(self, likes_data):
+        """Create a line chart for average likes by date and platform"""
+        if not likes_data:
+            st.warning("⚠️ No average likes data available")
+            return
+        
+        try:
+            # Convert to DataFrame for easier manipulation
+            chart_data = []
+            for item in likes_data:
+                chart_data.append({
+                    'Date': item['_id']['date'],
+                    'Platform': item['_id']['platform'],
+                    'Average Likes': round(item['avg_likes'], 2),
+                    'Total Posts': item['total_posts']
+                })
+            
+            df = pd.DataFrame(chart_data)
+            
+            # Convert date strings to datetime for proper sorting
+            df['Date'] = pd.to_datetime(df['Date'])
+            df = df.sort_values('Date')
+            
+            # Create the line chart
+            fig = px.line(
+                df,
+                x='Date',
+                y='Average Likes',
+                color='Platform',
+                title='📈 Average Likes Count by Date and Platform',
+                markers=True,  # Add markers to the lines
+                line_shape='linear'
+            )
+            
+            fig.update_layout(
+                xaxis_title="Date",
+                yaxis_title="Average Likes Count",
+                legend_title="Platform",
+                height=500,
+                showlegend=True,
+                hovermode='x unified'
+            )
+            
+            # Customize colors for each platform
+            fig.update_traces(
+                line=dict(width=3),
+                marker=dict(size=6)
+            )
+            
+            # Display the chart
+            st.plotly_chart(fig, use_container_width=True)
+            
+        except Exception as e:
+            st.error(f"❌ Error creating average likes line chart: {str(e)}")
+    
 
     
     def run(self):
@@ -598,6 +675,7 @@ class DashboardApp:
         day_data = self.get_engagement_by_day()
         sentiment_data = self.get_sentiment_by_platform()
         sentiment_by_post_type_data = self.get_sentiment_by_post_type()
+        average_likes_data = self.get_average_likes_by_date_platform()
         
         # Display charts side by side
         if engagement_data or day_data:
@@ -644,6 +722,11 @@ class DashboardApp:
             # Display donut charts below
             if sentiment_data:
                 self.display_sentiment_donut_charts(sentiment_data)
+        
+        # Display average likes line chart
+        if average_likes_data:
+            st.subheader("📈 Average Likes Trend Analysis")
+            self.create_average_likes_line_chart(average_likes_data)
         
 
         

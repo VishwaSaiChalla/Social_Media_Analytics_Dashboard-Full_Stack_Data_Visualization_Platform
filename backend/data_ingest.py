@@ -10,6 +10,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.data_store import SocialMediaDataStore
+from backend.transformation import DataTransformer
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -114,7 +115,14 @@ def mock_data_generator(num_records, data_store=None, start_post_id=None):
             "sentiment_score": sentiment_score
         })
 
-    return pd.DataFrame(data)
+    df = pd.DataFrame(data)
+    
+    # Use DataTransformer to add Posted_date and Posted_time columns
+    transformer = DataTransformer()
+    df = transformer.convert_post_time_to_date_time(df, 'post_time')
+    logger.info("Successfully added Posted_date and Posted_time columns to mock data")
+    
+    return df
 
 def insert_data_to_mongodb(data_store: SocialMediaDataStore, df: pd.DataFrame) -> bool:
     """

@@ -4,6 +4,7 @@ import pandas as pd
 import logging
 from typing import Dict, List, Optional, Any
 from datetime import datetime
+from transformation import DataTransformer
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,14 @@ class SocialMediaDataStore:
                     "post_time": {
                         "bsonType": "string",
                         "description": "Time when the post was made (in ISO 8601 format)."
+                    },
+                    "Posted_date": {
+                        "bsonType": "string",
+                        "description": "Date when the post was made (YYYY-MM-DD format)."
+                    },
+                    "Posted_time": {
+                        "bsonType": "string",
+                        "description": "Time when the post was made (HH:MM:SS format)."
                     },
                     "likes": {
                         "bsonType": "int",
@@ -311,9 +320,16 @@ class SocialMediaDataStore:
             logger.info(f"Successfully read CSV file with {len(df)} rows and {len(df.columns)} columns")
             logger.debug(f"CSV columns: {list(df.columns)}")
             
-            # Convert post_time to ISO 8601 string
-            logger.debug("Converting post_time to ISO 8601 format")
-            df['post_time'] = pd.to_datetime(df['post_time']).dt.strftime('%Y-%m-%dT%H:%M:%S')
+            # Use DataTransformer to add Posted_date and Posted_time columns
+            transformer = DataTransformer()
+            df = transformer.convert_post_time_to_date_time(df, 'post_time')
+            logger.info("Successfully added Posted_date and Posted_time columns")
+            
+            # Convert post_time to ISO 8601 string format for storage
+            logger.debug("Converting post_time to ISO 8601 format for storage")
+            # First convert to datetime, then to ISO string format
+            df['post_time'] = pd.to_datetime(df['post_time'], format='%m/%d/%Y %H:%M', errors='coerce')
+            df['post_time'] = df['post_time'].dt.strftime('%Y-%m-%dT%H:%M:%S')
 
             # Filter columns to only include those defined in the schema
             logger.debug("Filtering DataFrame columns to match schema")
@@ -602,6 +618,38 @@ class SocialMediaDataStore:
             logger.error(f"Failed to get sentiment by post type: {e}")
             return []
 
+    def get_average_likes_by_date_platform(self) -> List[Dict]:
+        """
+        Get average likes count by date and platform.
+        
+        Returns:
+            List[Dict]: Average likes data grouped by date and platform
+        """
+        logger.info("Attempting to get average likes by date and platform")
+        try:
+            if self.collection is None:
+                logger.error("Database not connected. Call connect() first.")
+                return []
+                
+            pipeline = [
+                {'$group': {
+                    '_id': {
+                        'date': '$Posted_date',
+                        'platform': '$platform'
+                    },
+                    'avg_likes': {'$avg': '$likes'},
+                    'total_posts': {'$sum': 1}
+                }},
+                {'$sort': {'_id.date': 1, '_id.platform': 1}}
+            ]
+            
+            results = list(self.collection.aggregate(pipeline))
+            logger.info(f"Successfully retrieved average likes by date and platform: {len(results)} records")
+            return results
+        except Exception as e:
+            logger.error(f"Failed to get average likes by date and platform: {e}")
+            return []
+
     
 
     
@@ -619,12 +667,9 @@ class SocialMediaDataStore:
                 return []
                 
             pipeline = [
-                {'$addFields': {
-                    'date': {'$dateFromString': {'dateString': '$post_time'}}
-                }},
                 {'$group': {
                     '_id': {
-                        'date': {'$dateToString': {'format': '%Y-%m-%d', 'date': '$date'}},
+                        'date': '$Posted_date',
                         'platform': '$platform'
                     },
                     'avg_likes': {'$avg': '$likes'},
