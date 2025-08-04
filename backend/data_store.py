@@ -561,6 +561,47 @@ class SocialMediaDataStore:
             logger.error(f"Failed to get sentiment by platform: {e}")
             return []
 
+    def get_sentiment_by_post_type(self) -> List[Dict]:
+        """
+        Get sentiment distribution by post type.
+        
+        Returns:
+            List[Dict]: Post type sentiment data with counts for positive, negative, and neutral
+        """
+        logger.info("Attempting to get sentiment by post type statistics")
+        try:
+            if self.collection is None:
+                logger.error("Database not connected. Call connect() first.")
+                return []
+                
+            pipeline = [
+                {'$group': {
+                    '_id': {
+                        'post_type': '$post_type',
+                        'sentiment': '$sentiment_score'
+                    },
+                    'count': {'$sum': 1}
+                }},
+                {'$group': {
+                    '_id': '$_id.post_type',
+                    'sentiments': {
+                        '$push': {
+                            'sentiment': '$_id.sentiment',
+                            'count': '$count'
+                        }
+                    },
+                    'total_posts': {'$sum': '$count'}
+                }},
+                {'$sort': {'_id': 1}}
+            ]
+            
+            results = list(self.collection.aggregate(pipeline))
+            logger.info(f"Successfully retrieved sentiment by post type: {results}")
+            return results
+        except Exception as e:
+            logger.error(f"Failed to get sentiment by post type: {e}")
+            return []
+
     
 
     
