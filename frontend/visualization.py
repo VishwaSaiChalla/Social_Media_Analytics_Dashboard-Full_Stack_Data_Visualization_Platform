@@ -164,6 +164,18 @@ class DashboardApp:
         """Get average likes data by date and platform"""
         return self.call_api_with_error_handling('/api/average-likes-by-date-platform', 'Failed to retrieve average likes by date and platform data', 'average_likes_by_date_platform')
     
+    def get_average_comments_by_date_platform(self):
+        """Get average comments data by date and platform"""
+        return self.call_api_with_error_handling('/api/average-comments-by-date-platform', 'Failed to retrieve average comments by date and platform data', 'average_comments_by_date_platform')
+
+    def get_average_shares_by_date_platform(self):
+        """Get average shares data by date and platform"""
+        return self.call_api_with_error_handling('/api/average-shares-by-date-platform', 'Failed to retrieve average shares by date and platform data', 'average_shares_by_date_platform')
+
+    def get_shares_by_post_type(self):
+        """Get shares data by post type"""
+        return self.call_api_with_error_handling('/api/shares-by-post-type', 'Failed to retrieve shares by post type data', 'shares_by_post_type')
+
     def display_kpi_metrics(self, stats_data):
         """Display KPI metrics"""
         if not stats_data:
@@ -595,6 +607,181 @@ class DashboardApp:
             
         except Exception as e:
             st.error(f"❌ Error creating average likes line chart: {str(e)}")
+
+    def create_average_comments_line_chart(self, comments_data):
+        """Create a line chart for average comments by date and platform"""
+        if not comments_data:
+            st.warning("⚠️ No average comments data available")
+            return
+        
+        try:
+            # Convert to DataFrame for easier manipulation
+            chart_data = []
+            for item in comments_data:
+                chart_data.append({
+                    'Date': item['_id']['date'],
+                    'Platform': item['_id']['platform'],
+                    'Average Comments': round(item['avg_comments'], 2),
+                    'Total Posts': item['total_posts']
+                })
+            
+            df = pd.DataFrame(chart_data)
+            
+            # Convert date strings to datetime for proper sorting
+            df['Date'] = pd.to_datetime(df['Date'])
+            df = df.sort_values('Date')
+            
+            # Create the line chart
+            fig = px.line(
+                df,
+                x='Date',
+                y='Average Comments',
+                color='Platform',
+                title='💬 Average Comments Count by Date and Platform',
+                markers=True,  # Add markers to the lines
+                line_shape='linear'
+            )
+            
+            fig.update_layout(
+                xaxis_title="Date",
+                yaxis_title="Average Comments Count",
+                legend_title="Platform",
+                height=500,
+                showlegend=True,
+                hovermode='x unified'
+            )
+            
+            # Customize colors for each platform
+            fig.update_traces(
+                line=dict(width=3),
+                marker=dict(size=6)
+            )
+            
+            # Display the chart
+            st.plotly_chart(fig, use_container_width=True)
+            
+        except Exception as e:
+            st.error(f"❌ Error creating average comments line chart: {str(e)}")
+
+    def create_average_shares_line_chart(self, shares_data):
+        """Create a line chart for average shares by date and platform"""
+        if not shares_data:
+            st.warning("⚠️ No average shares data available")
+            return
+        
+        try:
+            # Convert to DataFrame for easier manipulation
+            chart_data = []
+            for item in shares_data:
+                chart_data.append({
+                    'Date': item['_id']['date'],
+                    'Platform': item['_id']['platform'],
+                    'Average Shares': round(item['avg_shares'], 2),
+                    'Total Posts': item['total_posts']
+                })
+            
+            df = pd.DataFrame(chart_data)
+            
+            # Convert date strings to datetime for proper sorting
+            df['Date'] = pd.to_datetime(df['Date'])
+            df = df.sort_values('Date')
+            
+            # Create the line chart
+            fig = px.line(
+                df,
+                x='Date',
+                y='Average Shares',
+                color='Platform',
+                title='📤 Average Shares Count by Date and Platform',
+                markers=True,  # Add markers to the lines
+                line_shape='linear'
+            )
+            
+            fig.update_layout(
+                xaxis_title="Date",
+                yaxis_title="Average Shares Count",
+                legend_title="Platform",
+                height=500,
+                showlegend=True,
+                hovermode='x unified'
+            )
+            
+            # Customize colors for each platform
+            fig.update_traces(
+                line=dict(width=3),
+                marker=dict(size=6)
+            )
+            
+            # Display the chart
+            st.plotly_chart(fig, use_container_width=True)
+            
+        except Exception as e:
+            st.error(f"❌ Error creating average shares line chart: {str(e)}")
+
+    def create_shares_by_post_type_clustered_chart(self, shares_data):
+        """Create a clustered bar chart for shares by post type"""
+        if not shares_data:
+            st.warning("⚠️ No shares by post type data available")
+            return
+        
+        try:
+            # Convert to DataFrame for easier manipulation
+            chart_data = []
+            for item in shares_data:
+                chart_data.append({
+                    'Post Type': item['_id'].title(),
+                    'Total Shares': item['total_shares'],
+                    # 'Average Shares': round(item['avg_shares'], 2),
+                    'Total Posts': item['total_posts']
+                })
+            
+            df = pd.DataFrame(chart_data)
+            
+            # Create a long format DataFrame for clustered bar chart
+            chart_data_long = []
+            for _, row in df.iterrows():
+                chart_data_long.extend([
+                    {
+                        'Post Type': row['Post Type'],
+                        'Metric': 'Total Shares',
+                        'Value': row['Total Shares']
+                    }#,
+                    # {
+                    #     'Post Type': row['Post Type'],
+                    #     'Metric': 'Average Shares',
+                    #     'Value': row['Average Shares']
+                    # }
+                ])
+            
+            chart_df = pd.DataFrame(chart_data_long)
+            
+            # Create the clustered bar chart
+            fig = px.bar(
+                chart_df,
+                y='Post Type',
+                x='Value',
+                color='Metric',
+                title='📤 Shares Analysis by Post Type (Clustered Bar Chart)',
+                barmode='group',
+                color_discrete_map={
+                    'Total Shares': '#1f77b4',  # Blue
+                    'Average Shares': '#ff7f0e'  # Orange
+                }
+            )
+            
+            fig.update_layout(
+                yaxis_title="Post Type",
+                xaxis_title="Shares Count",
+                legend_title="Metric",
+                height=500,
+                showlegend=True
+            )
+            
+            # Display the chart
+            st.plotly_chart(fig, use_container_width=True)
+            
+        except Exception as e:
+            st.error(f"❌ Error creating shares by post type clustered chart: {str(e)}")
     
 
     
@@ -670,14 +857,17 @@ class DashboardApp:
             if self.session_state.last_update:
                 st.caption(f"Last updated: {self.session_state.last_update.strftime('%Y-%m-%d %H:%M:%S')}")
         
-        # Get engagement data for both charts
+        # Get data for charts
         engagement_data = self.get_platform_engagement()
         day_data = self.get_engagement_by_day()
         sentiment_data = self.get_sentiment_by_platform()
         sentiment_by_post_type_data = self.get_sentiment_by_post_type()
         average_likes_data = self.get_average_likes_by_date_platform()
-        
-        # Display charts side by side
+        average_comments_data = self.get_average_comments_by_date_platform()
+        average_shares_data = self.get_average_shares_by_date_platform()
+        shares_by_post_type_data = self.get_shares_by_post_type()
+
+        # Display engagement charts side by side
         if engagement_data or day_data:
             st.subheader("📊 Engagement Analytics")
             
@@ -697,12 +887,12 @@ class DashboardApp:
                     self.display_engagement_by_day_chart(day_data)
                 else:
                     st.warning("⚠️ No engagement by day data available")
-        
-        # Display sentiment charts
+
+        # Display charts side by side
         if sentiment_data or sentiment_by_post_type_data:
             st.subheader("📊 Sentiment Analysis")
             
-            # Display stacked charts side by side
+            # Create two columns for side-by-side display
             col1, col2 = st.columns(2)
             
             with col1:
@@ -710,7 +900,7 @@ class DashboardApp:
                     st.subheader("📊 Sentiment by Platform")
                     self.create_sentiment_stacked_bar_chart(sentiment_data)
                 else:
-                    st.warning("⚠️ No sentiment by platform data available")
+                    st.warning("⚠️ No sentiment data available")
             
             with col2:
                 if sentiment_by_post_type_data:
@@ -722,11 +912,55 @@ class DashboardApp:
             # Display donut charts below
             if sentiment_data:
                 self.display_sentiment_donut_charts(sentiment_data)
-        
-        # Display average likes line chart
-        if average_likes_data:
-            st.subheader("📈 Average Likes Trend Analysis")
-            self.create_average_likes_line_chart(average_likes_data)
+
+        # Display average likes and comments line charts side by side
+        if average_likes_data or average_comments_data or average_shares_data:
+            st.subheader("📈 Engagement Trend Analysis")
+            
+            # Create three columns for side-by-side display
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if average_likes_data:
+                    st.subheader("📈 Average Likes Trend")
+                    self.create_average_likes_line_chart(average_likes_data)
+                else:
+                    st.warning("⚠️ No average likes data available")
+            
+            with col2:
+                if average_comments_data:
+                    st.subheader("💬 Average Comments Trend")
+                    self.create_average_comments_line_chart(average_comments_data)
+                else:
+                    st.warning("⚠️ No average comments data available")
+            
+            # with col3:
+            #     if average_shares_data:
+            #         st.subheader("📤 Average Shares Trend")
+            #         self.create_average_shares_line_chart(average_shares_data)
+            #     else:
+            #         st.warning("⚠️ No average shares data available")
+
+        # Display shares analysis charts side by side
+        if shares_by_post_type_data or average_shares_data:
+            st.subheader("📤 Shares Analysis")
+            
+            # Create two columns for side-by-side display
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if shares_by_post_type_data:
+                    st.subheader("📤 Shares by Post Type")
+                    self.create_shares_by_post_type_clustered_chart(shares_by_post_type_data)
+                else:
+                    st.warning("⚠️ No shares by post type data available")
+            
+            with col2:
+                if average_shares_data:
+                    st.subheader("📤 Average Shares Trend")
+                    self.create_average_shares_line_chart(average_shares_data)
+                else:
+                    st.warning("⚠️ No average shares data available")
         
 
         

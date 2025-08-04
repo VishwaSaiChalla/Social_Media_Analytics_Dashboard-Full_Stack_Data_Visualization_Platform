@@ -650,6 +650,100 @@ class SocialMediaDataStore:
             logger.error(f"Failed to get average likes by date and platform: {e}")
             return []
 
+    def get_average_comments_by_date_platform(self) -> List[Dict]:
+        """
+        Get average comments count by date and platform.
+        
+        Returns:
+            List[Dict]: Average comments data grouped by date and platform
+        """
+        logger.info("Attempting to get average comments by date and platform")
+        try:
+            if self.collection is None:
+                logger.error("Database not connected. Call connect() first.")
+                return []
+                
+            pipeline = [
+                {'$group': {
+                    '_id': {
+                        'date': '$Posted_date',
+                        'platform': '$platform'
+                    },
+                    'avg_comments': {'$avg': '$comments'},
+                    'total_posts': {'$sum': 1}
+                }},
+                {'$sort': {'_id.date': 1, '_id.platform': 1}}
+            ]
+            
+            results = list(self.collection.aggregate(pipeline))
+            logger.info(f"Successfully retrieved average comments by date and platform: {len(results)} records")
+            return results
+        except Exception as e:
+            logger.error(f"Failed to get average comments by date and platform: {e}")
+            return []
+
+    def get_average_shares_by_date_platform(self) -> List[Dict]:
+        """
+        Get average shares count by date and platform.
+        
+        Returns:
+            List[Dict]: Average shares data grouped by date and platform
+        """
+        logger.info("Attempting to get average shares by date and platform")
+        try:
+            if self.collection is None:
+                logger.error("Database not connected. Call connect() first.")
+                return []
+                
+            pipeline = [
+                {'$group': {
+                    '_id': {
+                        'date': '$Posted_date',
+                        'platform': '$platform'
+                    },
+                    'avg_shares': {'$avg': '$shares'},
+                    'total_posts': {'$sum': 1}
+                }},
+                {'$sort': {'_id.date': 1, '_id.platform': 1}}
+            ]
+            
+            results = list(self.collection.aggregate(pipeline))
+            logger.info(f"Successfully retrieved average shares by date and platform: {len(results)} records")
+            return results
+        except Exception as e:
+            logger.error(f"Failed to get average shares by date and platform: {e}")
+            return []
+
+    def get_shares_by_post_type(self) -> List[Dict]:
+        """
+        Get shares data grouped by post type.
+        
+        Returns:
+            List[Dict]: Shares data grouped by post type
+        """
+        logger.info("Attempting to get shares by post type")
+        try:
+            if self.collection is None:
+                logger.error("Database not connected. Call connect() first.")
+                return []
+                
+            pipeline = [
+                {'$group': {
+                    '_id': '$post_type',
+                    'total_shares': {'$sum': '$shares'},
+                    'avg_shares': {'$avg': '$shares'},
+                    'total_posts': {'$sum': 1}
+                }},
+                {'$sort': {'total_shares': -1}}
+            ]
+            
+            results = list(self.collection.aggregate(pipeline))
+            logger.info(f"Successfully retrieved shares by post type: {len(results)} records")
+            return results
+        except Exception as e:
+            logger.error(f"Failed to get shares by post type: {e}")
+            return []
+
     
 
     

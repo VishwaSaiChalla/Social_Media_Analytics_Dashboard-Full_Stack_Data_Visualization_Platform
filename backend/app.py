@@ -320,6 +320,51 @@ class BackendApp:
             except Exception as e:
                 logger.error(f"Error getting average likes by date and platform: {e}")
                 return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/average-comments-by-date-platform', methods=['GET'])
+        def get_average_comments_by_date_platform():
+            """Get average comments by date and platform"""
+            try:
+                comments_data = self.data_store.get_average_comments_by_date_platform()
+                
+                return jsonify({
+                    'success': True,
+                    'average_comments_by_date_platform': comments_data
+                })
+                
+            except Exception as e:
+                logger.error(f"Error getting average comments by date and platform: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/average-shares-by-date-platform', methods=['GET'])
+        def get_average_shares_by_date_platform():
+            """Get average shares by date and platform"""
+            try:
+                shares_data = self.data_store.get_average_shares_by_date_platform()
+                
+                return jsonify({
+                    'success': True,
+                    'average_shares_by_date_platform': shares_data
+                })
+                
+            except Exception as e:
+                logger.error(f"Error getting average shares by date and platform: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/shares-by-post-type', methods=['GET'])
+        def get_shares_by_post_type():
+            """Get shares by post type"""
+            try:
+                shares_data = self.data_store.get_shares_by_post_type()
+                
+                return jsonify({
+                    'success': True,
+                    'shares_by_post_type': shares_data
+                })
+                
+            except Exception as e:
+                logger.error(f"Error getting shares by post type: {e}")
+                return jsonify({'error': str(e)}), 500
         
 
     
