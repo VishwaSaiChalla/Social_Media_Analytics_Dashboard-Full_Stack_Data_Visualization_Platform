@@ -358,6 +358,72 @@ class DashboardApp:
         except Exception as e:
             st.error(f"❌ Error creating donut chart for {platform}: {str(e)}")
     
+    def create_sentiment_stacked_bar_chart(self, sentiment_data):
+        """Create a stacked bar chart for sentiment scores by platform"""
+        if not sentiment_data:
+            st.warning("⚠️ No sentiment data available")
+            return
+        
+        try:
+            # Prepare data for stacked bar chart
+            chart_data = []
+            platforms = ['Facebook', 'Twitter', 'LinkedIn', 'Instagram']
+            sentiments = ['positive', 'negative', 'neutral']
+            
+            # Initialize data structure
+            for platform in platforms:
+                platform_data = next((item for item in sentiment_data if item['_id'] == platform), None)
+                if platform_data:
+                    sentiments_dict = {s['sentiment']: s['count'] for s in platform_data.get('sentiments', [])}
+                    for sentiment in sentiments:
+                        chart_data.append({
+                            'Platform': platform,
+                            'Sentiment': sentiment.title(),
+                            'Count': sentiments_dict.get(sentiment, 0)
+                        })
+                else:
+                    # If no data for platform, add zeros
+                    for sentiment in sentiments:
+                        chart_data.append({
+                            'Platform': platform,
+                            'Sentiment': sentiment.title(),
+                            'Count': 0
+                        })
+            
+            # Create DataFrame
+            df = pd.DataFrame(chart_data)
+            
+            # Create stacked bar chart
+            fig = px.bar(
+                df,
+                x='Platform',
+                y='Count',
+                color='Sentiment',
+                title='📊 Sentiment Distribution by Platform (Stacked Bar Chart)',
+                barmode='stack',
+                color_discrete_map={
+                    'Positive': '#1f77b4',  # Blue
+                    'Negative': '#FFA500',  # Orange
+                    'Neutral': '#2ca02c'    # Green
+                }
+            )
+            
+            # Update layout for better appearance
+            fig.update_layout(
+                xaxis_title="Platform",
+                yaxis_title="Number of Posts",
+                legend_title="Sentiment",
+                height=500,
+                showlegend=True,
+                barmode='stack'
+            )
+            
+            # Display the chart
+            st.plotly_chart(fig, use_container_width=True)
+            
+        except Exception as e:
+            st.error(f"❌ Error creating stacked bar chart: {str(e)}")
+    
     def display_sentiment_donut_charts(self, sentiment_data):
         """Display sentiment donut charts for all platforms"""
         if not sentiment_data:
@@ -483,8 +549,14 @@ class DashboardApp:
                 else:
                     st.warning("⚠️ No engagement by day data available")
         
-        # Display sentiment donut charts
+        # Display sentiment charts
         if sentiment_data:
+            st.subheader("📊 Sentiment Analysis")
+            
+            # Display stacked bar chart first
+            self.create_sentiment_stacked_bar_chart(sentiment_data)
+            
+            # Display donut charts below
             self.display_sentiment_donut_charts(sentiment_data)
         
 
