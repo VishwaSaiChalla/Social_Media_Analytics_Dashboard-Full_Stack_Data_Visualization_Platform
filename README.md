@@ -68,25 +68,73 @@ A comprehensive social media analytics platform that provides real-time insights
 - Docker (optional)
 
 ### Quick Start
+
+#### Option 1: Local Development
+
+1. **Start MongoDB**
+   ```bash
+   # Start MongoDB service
+   mongod
+   ```
+
+2. **Run Backend API**
+   ```bash
+   # Navigate to backend directory
+   cd backend
+   
+   # Run Flask application
+   python app.py
+   ```
+
+3. **Run Frontend Dashboard**
+   ```bash
+   # Navigate to frontend directory
+   cd frontend
+   
+   # Run Streamlit dashboard
+   streamlit run visualization.py
+   ```
+
+4. **Access the Application**
+   - Dashboard: http://localhost:8501
+   - API: http://localhost:5000
+
+#### Option 2: Docker Setup
+
+1. **Start all services with Docker Compose**
+   ```bash
+   # Build and start all services
+   docker-compose up -d
+   ```
+
+2. **Stop all services**
+   ```bash
+   # Stop and remove containers
+   docker-compose down
+   ```
+
+3. **Access the Application**
+   - Dashboard: http://localhost:8501
+   - API: http://localhost:5000
+   - MongoDB: localhost:27017
+
+### Alternative Docker Commands
+
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd takehomeproject
+# Start services in background
+docker-compose up -d
 
-# Install dependencies
-pip install -r requirements.txt
+# View logs
+docker-compose logs -f
 
-# Start MongoDB (if not running)
-mongod
+# Stop services
+docker-compose down
 
-# Run the application
-python -m streamlit run frontend/visualization.py
-```
+# Rebuild and start
+docker-compose up --build -d
 
-### Docker Setup
-```bash
-# Build and run with Docker Compose
-docker-compose up --build
+# Check service status
+docker-compose ps
 ```
 
 ## 📊 Data Structure
@@ -159,7 +207,7 @@ docker-compose up --build
 6. **Decomposition Tree**: Interactive hierarchical analysis with filters
 
 ### Filtering Options
-- **Platform Filter**: Select specific platforms or view all
+- **Platform Filter**: Select specific platforms or view all platforms
 - **Post Type Filter**: Filter by content type
 - **Date Range**: Automatic date-based filtering in trend charts
 - **Real-time Updates**: Auto-refresh every 30 seconds
@@ -198,17 +246,22 @@ streamlit run frontend/visualization.py
 ```
 takehomeproject/
 ├── backend/
-│   ├── app.py              # Flask application
-│   ├── data_store.py       # MongoDB operations
-│   ├── data_ingest.py      # Data ingestion logic
-│   ├── transformation.py    # Data transformation utilities
-│   └── Social_Media_Engagement.csv
+│   ├── app.py                      # Flask application
+│   ├── data_store.py               # MongoDB operations
+│   ├── data_ingest.py              # Data ingestion logic
+│   ├── transformation.py            # Data transformation utilities
+│   └── Social_Media_Engagement.csv # Sample data file
 ├── frontend/
-│   └── visualization.py     # Streamlit dashboard
-├── requirements.txt         # Python dependencies
-├── docker-compose.yml      # Docker configuration
-├── Dockerfile             # Docker image definition
-└── README.md              # This file
+│   └── visualization.py             # Streamlit dashboard
+├── environ/                         # Environment files
+├── requirements.txt                 # Python dependencies
+├── docker-compose.yml              # Docker services configuration
+├── Dockerfile                      # Docker image definition
+├── dashboard.png                   # Dashboard screenshot
+├── data-ingestion.md              # Data ingestion documentation
+├── datastore-setup.md             # Database setup documentation
+├── visualization.md                # Visualization documentation
+└── README.md                      # This file
 ```
 
 ## 🤝 Contributing
