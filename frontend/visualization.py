@@ -72,26 +72,44 @@ class DashboardApp:
             return None
     
     def perform_initial_setup(self):
-        """Perform initial setup by calling the smart ingest endpoint"""
+        """Perform initial setup by checking database status and ingesting data if needed"""
         try:
             st.info("🔄 Checking database and performing initial setup...")
             
-            response = self.call_api('/api/ingest-csv', method='POST')
+            # First check if database has data
+            health_response = self.call_api('/health', method='GET')
             
-            if response and response.get('success'):
-                self.session_state.data_ingested = True
-                self.session_state.initial_setup_done = True
+            if health_response and health_response.get('database_connected'):
+                total_records = health_response.get('total_records', 0)
                 
-                # Show appropriate message based on whether ingestion was performed
-                if response.get('ingestion_performed', False):
-                    st.success(f"✅ {response.get('message', 'Initial data ingestion completed!')}")
+                if total_records > 0:
+                    # Database already has data
+                    self.session_state.data_ingested = True
+                    self.session_state.initial_setup_done = True
+                    st.success(f"✅ Database is ready with {total_records} records")
+                    return True
                 else:
-                    st.info(f"ℹ️ {response.get('message', 'Database already has data.')}")
-                
-                return True
+                    # Database is empty, try to ingest CSV data
+                    st.info("📥 Database is empty. Attempting to ingest CSV data...")
+                    response = self.call_api('/api/ingest-csv', method='POST')
+                    
+                    if response and response.get('success'):
+                        self.session_state.data_ingested = True
+                        self.session_state.initial_setup_done = True
+                        
+                        # Show appropriate message based on whether ingestion was performed
+                        if response.get('ingestion_performed', False):
+                            st.success(f"✅ {response.get('message', 'Initial data ingestion completed!')}")
+                        else:
+                            st.info(f"ℹ️ {response.get('message', 'Database already has data.')}")
+                        
+                        return True
+                    else:
+                        error_msg = response.get('error', 'Failed to setup database') if response else 'API call failed'
+                        st.error(f"❌ {error_msg}")
+                        return False
             else:
-                error_msg = response.get('error', 'Failed to setup database') if response else 'API call failed'
-                st.error(f"❌ {error_msg}")
+                st.error("❌ Database connection failed. Please check MongoDB connection.")
                 return False
                 
         except Exception as e:
@@ -142,6 +160,52 @@ class DashboardApp:
         """Get sentiment data by post type"""
         return self.call_api_with_error_handling('/api/sentiment-by-post-type', 'Failed to retrieve sentiment by post type data', 'sentiment_by_post_type')
     
+    def get_average_likes_by_date_platform(self):
+        """Get average likes data by date and platform"""
+        return self.call_api_with_error_handling('/api/average-likes-by-date-platform', 'Failed to retrieve average likes by date and platform data', 'average_likes_by_date_platform')
+    
+    def get_average_comments_by_date_platform(self):
+        """Get average comments data by date and platform"""
+        return self.call_api_with_error_handling('/api/average-comments-by-date-platform', 'Failed to retrieve average comments by date and platform data', 'average_comments_by_date_platform')
+
+    def get_average_shares_by_date_platform(self):
+        """Get average shares data by date and platform"""
+        return self.call_api_with_error_handling('/api/average-shares-by-date-platform', 'Failed to retrieve average shares by date and platform data', 'average_shares_by_date_platform')
+
+    def get_shares_by_post_type(self):
+        """Get shares data by post type"""
+        return self.call_api_with_error_handling('/api/shares-by-post-type', 'Failed to retrieve shares by post type data', 'shares_by_post_type')
+
+    def get_decomposition_tree_data(self, platform_filter=None, post_type_filter=None):
+        """Get decomposition tree data with optional filters"""
+        try:
+            # Build query parameters
+            params = {}
+            if platform_filter:
+                params['platform'] = platform_filter
+            if post_type_filter:
+                params['post_type'] = post_type_filter
+            
+            # Make API call with parameters
+            url = f"{self.api_base_url}/api/decomposition-tree"
+            if params:
+                query_string = '&'.join([f"{k}={v}" for k, v in params.items()])
+                url += f"?{query_string}"
+            
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            if data and data.get('success'):
+                return data.get('decomposition_tree_data', [])
+            else:
+                st.error("❌ Failed to retrieve decomposition tree data")
+                return None
+                
+        except Exception as e:
+            st.error(f"❌ Error: {str(e)}")
+            return None
+
     def display_kpi_metrics(self, stats_data):
         """Display KPI metrics"""
         if not stats_data:
@@ -519,6 +583,281 @@ class DashboardApp:
         with col4:
             self.create_donut_chart(sentiment_data, 'Instagram', '📷 Instagram Sentiment')
     
+    def create_average_likes_line_chart(self, likes_data):
+        """Create a line chart for average likes by date and platform"""
+        if not likes_data:
+            st.warning("⚠️ No average likes data available")
+            return
+        
+        try:
+            # Convert to DataFrame for easier manipulation
+            chart_data = []
+            for item in likes_data:
+                chart_data.append({
+                    'Date': item['_id']['date'],
+                    'Platform': item['_id']['platform'],
+                    'Average Likes': round(item['avg_likes'], 2),
+                    'Total Posts': item['total_posts']
+                })
+            
+            df = pd.DataFrame(chart_data)
+            
+            # Convert date strings to datetime for proper sorting
+            df['Date'] = pd.to_datetime(df['Date'])
+            df = df.sort_values('Date')
+            
+            # Create the line chart
+            fig = px.line(
+                df,
+                x='Date',
+                y='Average Likes',
+                color='Platform',
+                title='📈 Average Likes Count by Date and Platform',
+                markers=True,  # Add markers to the lines
+                line_shape='linear'
+            )
+            
+            fig.update_layout(
+                xaxis_title="Date",
+                yaxis_title="Average Likes Count",
+                legend_title="Platform",
+                height=500,
+                showlegend=True,
+                hovermode='x unified'
+            )
+            
+            # Customize colors for each platform
+            fig.update_traces(
+                line=dict(width=3),
+                marker=dict(size=6)
+            )
+            
+            # Display the chart
+            st.plotly_chart(fig, use_container_width=True)
+            
+        except Exception as e:
+            st.error(f"❌ Error creating average likes line chart: {str(e)}")
+
+    def create_average_comments_line_chart(self, comments_data):
+        """Create a line chart for average comments by date and platform"""
+        if not comments_data:
+            st.warning("⚠️ No average comments data available")
+            return
+        
+        try:
+            # Convert to DataFrame for easier manipulation
+            chart_data = []
+            for item in comments_data:
+                chart_data.append({
+                    'Date': item['_id']['date'],
+                    'Platform': item['_id']['platform'],
+                    'Average Comments': round(item['avg_comments'], 2),
+                    'Total Posts': item['total_posts']
+                })
+            
+            df = pd.DataFrame(chart_data)
+            
+            # Convert date strings to datetime for proper sorting
+            df['Date'] = pd.to_datetime(df['Date'])
+            df = df.sort_values('Date')
+            
+            # Create the line chart
+            fig = px.line(
+                df,
+                x='Date',
+                y='Average Comments',
+                color='Platform',
+                title='💬 Average Comments Count by Date and Platform',
+                markers=True,  # Add markers to the lines
+                line_shape='linear'
+            )
+            
+            fig.update_layout(
+                xaxis_title="Date",
+                yaxis_title="Average Comments Count",
+                legend_title="Platform",
+                height=500,
+                showlegend=True,
+                hovermode='x unified'
+            )
+            
+            # Customize colors for each platform
+            fig.update_traces(
+                line=dict(width=3),
+                marker=dict(size=6)
+            )
+            
+            # Display the chart
+            st.plotly_chart(fig, use_container_width=True)
+            
+        except Exception as e:
+            st.error(f"❌ Error creating average comments line chart: {str(e)}")
+
+    def create_average_shares_line_chart(self, shares_data):
+        """Create a line chart for average shares by date and platform"""
+        if not shares_data:
+            st.warning("⚠️ No average shares data available")
+            return
+        
+        try:
+            # Convert to DataFrame for easier manipulation
+            chart_data = []
+            for item in shares_data:
+                chart_data.append({
+                    'Date': item['_id']['date'],
+                    'Platform': item['_id']['platform'],
+                    'Average Shares': round(item['avg_shares'], 2),
+                    'Total Posts': item['total_posts']
+                })
+            
+            df = pd.DataFrame(chart_data)
+            
+            # Convert date strings to datetime for proper sorting
+            df['Date'] = pd.to_datetime(df['Date'])
+            df = df.sort_values('Date')
+            
+            # Create the line chart
+            fig = px.line(
+                df,
+                x='Date',
+                y='Average Shares',
+                color='Platform',
+                title='📤 Average Shares Count by Date and Platform',
+                markers=True,  # Add markers to the lines
+                line_shape='linear'
+            )
+            
+            fig.update_layout(
+                xaxis_title="Date",
+                yaxis_title="Average Shares Count",
+                legend_title="Platform",
+                height=500,
+                showlegend=True,
+                hovermode='x unified'
+            )
+            
+            # Customize colors for each platform
+            fig.update_traces(
+                line=dict(width=3),
+                marker=dict(size=6)
+            )
+            
+            # Display the chart
+            st.plotly_chart(fig, use_container_width=True)
+            
+        except Exception as e:
+            st.error(f"❌ Error creating average shares line chart: {str(e)}")
+
+    def create_shares_by_post_type_clustered_chart(self, shares_data):
+        """Create a clustered bar chart for shares by post type"""
+        if not shares_data:
+            st.warning("⚠️ No shares by post type data available")
+            return
+        
+        try:
+            # Convert to DataFrame for easier manipulation
+            chart_data = []
+            for item in shares_data:
+                chart_data.append({
+                    'Post Type': item['_id'].title(),
+                    'Total Shares': item['total_shares'],
+                    # 'Average Shares': round(item['avg_shares'], 2),
+                    'Total Posts': item['total_posts']
+                })
+            
+            df = pd.DataFrame(chart_data)
+            
+            # Create a long format DataFrame for clustered bar chart
+            chart_data_long = []
+            for _, row in df.iterrows():
+                chart_data_long.extend([
+                    {
+                        'Post Type': row['Post Type'],
+                        'Metric': 'Total Shares',
+                        'Value': row['Total Shares']
+                    }#,
+                    # {
+                    #     'Post Type': row['Post Type'],
+                    #     'Metric': 'Average Shares',
+                    #     'Value': row['Average Shares']
+                    # }
+                ])
+            
+            chart_df = pd.DataFrame(chart_data_long)
+            
+            # Create the clustered bar chart
+            fig = px.bar(
+                chart_df,
+                y='Post Type',
+                x='Value',
+                color='Metric',
+                title='📤 Shares Analysis by Post Type (Clustered Bar Chart)',
+                barmode='group',
+                color_discrete_map={
+                    'Total Shares': '#1f77b4',  # Blue
+                    'Average Shares': '#ff7f0e'  # Orange
+                }
+            )
+            
+            fig.update_layout(
+                yaxis_title="Post Type",
+                xaxis_title="Shares Count",
+                legend_title="Metric",
+                height=500,
+                showlegend=True
+            )
+            
+            # Display the chart
+            st.plotly_chart(fig, use_container_width=True)
+            
+        except Exception as e:
+            st.error(f"❌ Error creating shares by post type clustered chart: {str(e)}")
+
+    def create_decomposition_treemap(self, tree_data):
+        """Create a decomposition tree (treemap) visualization"""
+        if not tree_data:
+            st.warning("⚠️ No decomposition tree data available")
+            return
+        
+        try:
+            # Convert to DataFrame for easier manipulation
+            chart_data = []
+            for item in tree_data:
+                chart_data.append({
+                    'Platform': item['_id']['platform'],
+                    'Post Type': item['_id']['post_type'].title(),
+                    'Sentiment Score': item['_id']['sentiment_score'].title(),
+                    'Total Posts': item['total_posts'],
+                    'Total Likes': item['total_likes'],
+                    'Total Comments': item['total_comments'],
+                    'Total Shares': item['total_shares']
+                })
+            
+            df = pd.DataFrame(chart_data)
+            
+            # Create hierarchical structure for treemap
+            # Group by platform, then post type, then sentiment
+            fig = px.treemap(
+                df,
+                path=['Platform', 'Post Type', 'Sentiment Score'],
+                values='Total Posts',
+                title='🌳 Decomposition Tree - Posts by Platform, Post Type, and Sentiment',
+                color='Total Posts',
+                color_continuous_scale='Blues',
+                hover_data=['Total Likes', 'Total Comments', 'Total Shares']
+            )
+            
+            fig.update_layout(
+                height=600,
+                showlegend=False
+            )
+            
+            # Display the chart
+            st.plotly_chart(fig, use_container_width=True)
+            
+        except Exception as e:
+            st.error(f"❌ Error creating decomposition treemap: {str(e)}")
+    
 
     
     def run(self):
@@ -593,13 +932,18 @@ class DashboardApp:
             if self.session_state.last_update:
                 st.caption(f"Last updated: {self.session_state.last_update.strftime('%Y-%m-%d %H:%M:%S')}")
         
-        # Get engagement data for both charts
+        # Get data for charts
         engagement_data = self.get_platform_engagement()
         day_data = self.get_engagement_by_day()
         sentiment_data = self.get_sentiment_by_platform()
         sentiment_by_post_type_data = self.get_sentiment_by_post_type()
-        
-        # Display charts side by side
+        average_likes_data = self.get_average_likes_by_date_platform()
+        average_comments_data = self.get_average_comments_by_date_platform()
+        average_shares_data = self.get_average_shares_by_date_platform()
+        shares_by_post_type_data = self.get_shares_by_post_type()
+        decomposition_tree_data = self.get_decomposition_tree_data()
+
+        # Display engagement charts side by side
         if engagement_data or day_data:
             st.subheader("📊 Engagement Analytics")
             
@@ -619,12 +963,12 @@ class DashboardApp:
                     self.display_engagement_by_day_chart(day_data)
                 else:
                     st.warning("⚠️ No engagement by day data available")
-        
-        # Display sentiment charts
+
+        # Display charts side by side
         if sentiment_data or sentiment_by_post_type_data:
             st.subheader("📊 Sentiment Analysis")
             
-            # Display stacked charts side by side
+            # Create two columns for side-by-side display
             col1, col2 = st.columns(2)
             
             with col1:
@@ -632,7 +976,7 @@ class DashboardApp:
                     st.subheader("📊 Sentiment by Platform")
                     self.create_sentiment_stacked_bar_chart(sentiment_data)
                 else:
-                    st.warning("⚠️ No sentiment by platform data available")
+                    st.warning("⚠️ No sentiment data available")
             
             with col2:
                 if sentiment_by_post_type_data:
@@ -644,9 +988,102 @@ class DashboardApp:
             # Display donut charts below
             if sentiment_data:
                 self.display_sentiment_donut_charts(sentiment_data)
-        
 
+        # Display average likes and comments line charts side by side
+        if average_likes_data or average_comments_data or average_shares_data:
+            st.subheader("📈 Engagement Trend Analysis")
+            
+            # Create three columns for side-by-side display
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if average_likes_data:
+                    st.subheader("📈 Average Likes Trend")
+                    self.create_average_likes_line_chart(average_likes_data)
+                else:
+                    st.warning("⚠️ No average likes data available")
+            
+            with col2:
+                if average_comments_data:
+                    st.subheader("💬 Average Comments Trend")
+                    self.create_average_comments_line_chart(average_comments_data)
+                else:
+                    st.warning("⚠️ No average comments data available")
+            
+            # with col3:
+            #     if average_shares_data:
+            #         st.subheader("📤 Average Shares Trend")
+            #         self.create_average_shares_line_chart(average_shares_data)
+            #     else:
+            #         st.warning("⚠️ No average shares data available")
+
+        # Display shares analysis charts side by side
+        if shares_by_post_type_data or average_shares_data:
+            st.subheader("📤 Shares Analysis")
+            
+            # Create two columns for side-by-side display
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if shares_by_post_type_data:
+                    st.subheader("📤 Shares by Post Type")
+                    self.create_shares_by_post_type_clustered_chart(shares_by_post_type_data)
+                else:
+                    st.warning("⚠️ No shares by post type data available")
+            
+            with col2:
+                if average_shares_data:
+                    st.subheader("📤 Average Shares Trend")
+                    self.create_average_shares_line_chart(average_shares_data)
+                else:
+                    st.warning("⚠️ No average shares data available")
+
+        # Display decomposition treemap with filters
+        st.subheader("🌳 Decomposition Tree Analysis")
         
+        # Add filter controls
+        with st.expander("🔧 Filter Options", expanded=False):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                platform_filter = st.selectbox(
+                    "Select Platform:",
+                    ["All Platforms", "Facebook", "Twitter", "LinkedIn", "Instagram"],
+                    help="Filter by specific platform or view all platforms"
+                )
+            
+            with col2:
+                post_type_filter = st.selectbox(
+                    "Select Post Type:",
+                    ["All Post Types", "carousel", "video", "text", "image", "poll", "story"],
+                    help="Filter by specific post type or view all post types"
+                )
+        
+        # Apply filters
+        selected_platform = None if platform_filter == "All Platforms" else platform_filter
+        selected_post_type = None if post_type_filter == "All Post Types" else post_type_filter
+        
+        # Get filtered decomposition tree data
+        filtered_tree_data = self.get_decomposition_tree_data(
+            platform_filter=selected_platform,
+            post_type_filter=selected_post_type
+        )
+        
+        if filtered_tree_data:
+            # Show filter summary
+            filter_summary = []
+            if selected_platform:
+                filter_summary.append(f"Platform: {selected_platform}")
+            if selected_post_type:
+                filter_summary.append(f"Post Type: {selected_post_type}")
+            
+            if filter_summary:
+                st.info(f"📊 Showing data for: {' | '.join(filter_summary)}")
+            
+            self.create_decomposition_treemap(filtered_tree_data)
+        else:
+            st.warning("⚠️ No data available for the selected filters")
+
         # Auto-refresh functionality
         if auto_refresh:
             time.sleep(30)

@@ -1,136 +1,342 @@
 # Data Ingestion Documentation
 
-This document explains how the data ingestion script (`data_ingest.py`) works in the social media analytics project. The script is responsible for generating and inserting realistic mock data into the MongoDB datastore.
-
 ## Overview
 
-The data ingestion process involves creating synthetic social media data entries that consist of multiple fields:
-- **Platform**: Social media platform (Facebook, Twitter, Instagram, LinkedIn)
-- **Post Type**: Type of content (text, image, video, poll, carousel, story)
-- **Post Time**: Timestamp when the post was made (ISO 8601 format)
-- **Engagement Metrics**: Likes, comments, shares
-- **Post Day**: Day of the week when posted
-- **Sentiment Score**: Positive, negative, or neutral sentiment
-- **Post ID**: Unique identifier for each post
+This document describes the comprehensive data ingestion system implemented in the Social Media Analytics Dashboard. The system supports multiple data sources and transformation workflows to ensure data quality and consistency.
 
-## Data Generation Features
+## 🔄 Data Ingestion Workflows
 
-### Realistic Data Patterns
-The script generates data with realistic social media patterns:
+### 1. CSV Data Ingestion
 
-1. **Platform-Specific Engagement**: Different platforms have different engagement ranges:
-   - Facebook: 50-800 likes, 10-200 comments, 5-150 shares
-   - Twitter: 20-500 likes, 5-100 comments, 10-300 shares
-   - Instagram: 100-1000 likes, 15-250 comments, 2-50 shares
-   - LinkedIn: 30-400 likes, 8-120 comments, 15-200 shares
+#### Initial Setup
+- **Source**: `backend/Social_Media_Engagement.csv`
+- **Format**: CSV with social media post data
+- **Automatic Trigger**: On backend startup if database is empty
+- **Manual Trigger**: Via `/api/ingest-csv` endpoint
 
-2. **Post Type Multipliers**: Different content types affect engagement:
-   - Video: Highest engagement (1.5x likes, 1.3x comments, 1.4x shares)
-   - Image: Good engagement (1.3x likes, 1.0x comments, 1.1x shares)
-   - Text: Moderate engagement (0.8x likes, 1.2x comments, 0.9x shares)
-   - Poll: High comments (1.1x likes, 1.5x comments, 0.8x shares)
+#### CSV Data Structure
+```csv
+platform,post_type,sentiment_score,likes,comments,shares,post_time
+Facebook,text,positive,150,25,10,8/17/2023 14:45
+Twitter,image,negative,75,15,5,8/18/2023 09:30
+LinkedIn,video,neutral,200,40,20,8/19/2023 16:20
+```
 
-3. **Time-Based Patterns**: More posts during business hours (9 AM - 5 PM)
+#### Ingestion Process
+1. **File Reading**: Pandas reads CSV file
+2. **Data Validation**: Schema validation and type checking
+3. **Date Transformation**: `post_time` conversion to separate date/time columns
+4. **Database Insertion**: Bulk insert into MongoDB collection
+5. **Status Reporting**: Success/failure feedback
 
-4. **Sentiment Correlation**: Higher engagement correlates with more positive sentiment
-
-### Data Fields Generated
-- **post_id**: Unique identifier (integer)
-- **platform**: Social media platform (string)
-- **post_type**: Content type (string)
-- **post_time**: ISO 8601 timestamp (string)
-- **likes**: Number of likes (integer)
-- **comments**: Number of comments (integer)
-- **shares**: Number of shares (integer)
-- **post_day**: Day of week (string)
-- **sentiment_score**: Sentiment analysis (string)
-
-## Ingestion Process
-
-### 1. Database Connection
-- Establishes connection to MongoDB using `SocialMediaDataStore`
-- Creates collection with schema validation
-- Handles connection errors gracefully
+#### API Endpoint
+```bash
+POST /api/ingest-csv
+```
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Data ingested successfully",
+  "records_ingested": 1000,
+  "ingestion_performed": true
+}
+```
 
 ### 2. Mock Data Generation
-- Generates specified number of records (default: 1000)
-- Applies realistic engagement patterns
-- Creates time-based distribution
-- Correlates sentiment with engagement levels
 
-### 3. Data Insertion
-- Uses `data_store.insert_data()` for bulk insertion
-- Validates data against MongoDB schema
-- Provides detailed logging for monitoring
-- Handles insertion errors with proper error messages
+#### Background Scheduler
+- **Framework**: APScheduler
+- **Frequency**: Every 2 minutes
+- **Records per batch**: 10 records
+- **Realistic Patterns**: Platform-specific engagement patterns
 
-### 4. Real-Time Updates (Bonus Feature)
-- Schedules periodic data insertion (every 2 minutes)
-- Generates 10-50 new records per batch
-- Continues until manually stopped
-- Uses APScheduler for background processing
+#### Mock Data Characteristics
+- **Platforms**: Facebook, Twitter, LinkedIn, Instagram
+- **Post Types**: carousel, video, text, image, poll, story
+- **Sentiment Scores**: positive, negative, neutral
+- **Engagement Patterns**: Realistic likes, comments, shares
+- **Time Patterns**: Business hours optimization
 
-## Usage
-
-### Basic Usage
+#### Scheduler Control
 ```bash
-python src/data_ingest.py
+# Start scheduler
+POST /api/start-scheduler
+
+# Stop scheduler  
+POST /api/stop-scheduler
 ```
 
-### Features
-- **Initial Data**: Generates 1000 mock records
-- **Real-Time Updates**: Adds 10-50 records every 2 minutes
-- **Comprehensive Logging**: Detailed progress and error logs
-- **Graceful Shutdown**: Ctrl+C to stop real-time updates
+### 3. Data Transformation Pipeline
 
-### Integration with Data Store
-The script uses the `SocialMediaDataStore` class for all database operations:
+#### Date/Time Processing
+The system includes a sophisticated data transformation pipeline that converts `post_time` into separate `Posted_date` and `Posted_time` columns for better analytics.
+
+#### Transformation Workflow
+1. **Input**: `post_time` column (various formats)
+2. **Processing**: `DataTransformer.convert_post_time_to_date_time()`
+3. **Output**: 
+   - `Posted_date`: YYYY-MM-DD format
+   - `Posted_time`: HH:MM:SS format
+   - `post_time`: ISO 8601 string format
+
+#### Supported Input Formats
+- **CSV Format**: `MM/DD/YYYY HH:MM` (e.g., "8/17/2023 14:45")
+- **ISO Format**: `YYYY-MM-DDTHH:MM:SS` (e.g., "2023-08-17T14:45:00")
+
+#### Transformation Code
 ```python
-from data_store import SocialMediaDataStore
-from data_ingest import mock_data_generator, insert_data_to_mongodb
-
-# Initialize data store
-data_store = SocialMediaDataStore()
-data_store.connect()
-data_store.create_collection()
-
-# Generate and insert data
-df = mock_data_generator(100)
-insert_data_to_mongodb(data_store, df)
+def convert_post_time_to_date_time(self, df: pd.DataFrame, post_time_column: str = 'post_time') -> pd.DataFrame:
+    """
+    Convert post_time column into separate Posted_date and Posted_time columns.
+    
+    Args:
+        df: Input DataFrame
+        post_time_column: Name of the post_time column
+        
+    Returns:
+        DataFrame with additional Posted_date and Posted_time columns
+    """
+    # Create temporary datetime column
+    temp_datetime_col = f"temp_{post_time_column}"
+    
+    # Try CSV format first, then ISO format
+    try:
+        df[temp_datetime_col] = pd.to_datetime(
+            df[post_time_column], 
+            format='%m/%d/%Y %H:%M',
+            errors='coerce'
+        )
+    except:
+        df[temp_datetime_col] = pd.to_datetime(
+            df[post_time_column], 
+            format='%Y-%m-%dT%H:%M:%S',
+            errors='coerce'
+        )
+    
+    # Extract date and time components
+    df['Posted_date'] = df[temp_datetime_col].dt.date.astype(str)
+    df['Posted_time'] = df[temp_datetime_col].dt.time.astype(str)
+    
+    # Clean up temporary column
+    df.drop(columns=[temp_datetime_col], inplace=True)
+    
+    return df
 ```
 
-## CSV Data Ingestion
+## 🗄️ Database Schema
 
-The script also supports ingesting data from CSV files:
+### Collection Structure
+```json
+{
+  "platform": "string",
+  "post_type": "string",
+  "sentiment_score": "string",
+  "likes": "number",
+  "comments": "number", 
+  "shares": "number",
+  "post_time": "string (ISO 8601)",
+  "Posted_date": "string (YYYY-MM-DD)",
+  "Posted_time": "string (HH:MM:SS)"
+}
+```
+
+### Schema Validation
 ```python
-from data_ingest import ingest_data_from_csv
-
-# Ingest CSV data
-success = ingest_data_from_csv('path/to/data.csv', data_store)
+database_schema = {
+    "validator": {
+        "$jsonSchema": {
+            "bsonType": "object",
+            "required": ["platform", "post_type", "sentiment_score", "likes", "comments", "shares", "post_time", "Posted_date", "Posted_time"],
+            "properties": {
+                "platform": {"enum": ["Facebook", "Twitter", "LinkedIn", "Instagram"]},
+                "post_type": {"enum": ["carousel", "video", "text", "image", "poll", "story"]},
+                "sentiment_score": {"enum": ["positive", "negative", "neutral"]},
+                "likes": {"bsonType": "int", "minimum": 0},
+                "comments": {"bsonType": "int", "minimum": 0},
+                "shares": {"bsonType": "int", "minimum": 0},
+                "post_time": {"bsonType": "string"},
+                "Posted_date": {"bsonType": "string"},
+                "Posted_time": {"bsonType": "string"}
+            }
+        }
+    }
+}
 ```
 
-## Error Handling
+## 🔄 Auto-Ingestion Flow
 
-- **Connection Errors**: Graceful handling of MongoDB connection issues
-- **Schema Validation**: Ensures data matches database schema
-- **Insertion Errors**: Proper error messages and rollback
-- **File Errors**: Handles missing or malformed CSV files
+### Backend Startup Process
+1. **Database Connection**: Establish MongoDB connection
+2. **Collection Check**: Verify if collection exists and has data
+3. **Schema Validation**: Check if schema matches current definition
+4. **Auto-Ingestion**: If collection is empty, automatically ingest CSV data
+5. **Status Reporting**: Log ingestion results
 
-## Performance Features
+### Frontend Integration
+1. **Health Check**: Frontend calls `/health` endpoint
+2. **Data Status**: Check if database has records
+3. **Manual Trigger**: If needed, trigger `/api/ingest-csv`
+4. **Status Update**: Update session state based on ingestion results
 
-- **Bulk Insertion**: Uses `insert_many()` for efficient data insertion
-- **Batch Processing**: Real-time updates in manageable batches
-- **Memory Efficient**: Processes data in chunks
-- **Logging**: Comprehensive logging for monitoring and debugging
+## 📊 Data Quality Assurance
 
-## Conclusion
+### Validation Rules
+- **Platform Validation**: Must be one of the 4 supported platforms
+- **Post Type Validation**: Must be one of the 6 supported types
+- **Sentiment Validation**: Must be positive, negative, or neutral
+- **Engagement Validation**: Likes, comments, shares must be non-negative integers
+- **Date Validation**: Posted_date must be in YYYY-MM-DD format
+- **Time Validation**: Posted_time must be in HH:MM:SS format
 
-This data ingestion script is a robust component of the social media analytics project, providing:
-- ✅ Realistic mock data generation
-- ✅ Multiple data ingestion methods (mock data + CSV)
-- ✅ Real-time data updates
-- ✅ Comprehensive error handling
-- ✅ Integration with the data store layer
-- ✅ Detailed documentation and logging
+### Error Handling
+- **Missing Data**: Graceful handling of null/empty values
+- **Format Errors**: Automatic format detection and conversion
+- **Schema Violations**: Detailed error messages for validation failures
+- **Connection Issues**: Retry logic for database connection problems
 
-The script successfully meets all requirements for generating and inserting mock data with at least three fields (platform, engagement metrics, timestamp) and provides additional bonus features for enhanced functionality.
+## 🔧 Configuration
+
+### Environment Variables
+```bash
+# MongoDB Configuration
+MONGODB_URI=mongodb://localhost:27017
+MONGODB_DATABASE=social_media_analytics
+MONGODB_COLLECTION=posts
+
+# API Configuration  
+BACKEND_API_URL=http://localhost:5000
+
+# Scheduler Configuration
+SCHEDULER_INTERVAL=120  # seconds
+RECORDS_PER_BATCH=10
+```
+
+### File Paths
+- **CSV File**: `backend/Social_Media_Engagement.csv`
+- **Log Files**: Application logs with detailed ingestion tracking
+- **Configuration**: Environment variables and configuration files
+
+## 📈 Performance Optimization
+
+### Bulk Operations
+- **Batch Insertion**: Insert multiple records in single operation
+- **Index Optimization**: MongoDB indexes on frequently queried fields
+- **Memory Management**: Efficient DataFrame operations
+
+### Caching Strategy
+- **API Response Caching**: 5-minute cache for frequently accessed data
+- **Session State**: Frontend session state for user preferences
+- **Database Connection**: Connection pooling for better performance
+
+## 🚨 Monitoring & Logging
+
+### Ingestion Logs
+```python
+logger.info(f"Starting CSV ingestion from {csv_file}")
+logger.info(f"Successfully ingested {records_ingested} records")
+logger.error(f"Ingestion failed: {error_message}")
+```
+
+### Health Monitoring
+- **Database Connection**: Regular health checks
+- **Data Freshness**: Monitor last ingestion timestamp
+- **Error Tracking**: Log and alert on ingestion failures
+
+### Metrics Tracking
+- **Records Processed**: Count of successfully ingested records
+- **Processing Time**: Time taken for ingestion operations
+- **Error Rate**: Percentage of failed ingestion attempts
+- **Data Quality**: Validation success rate
+
+## 🔄 Data Flow Diagram
+
+```
+CSV File → DataTransformer → Schema Validation → MongoDB
+    ↓
+Mock Data Generator → DataTransformer → Schema Validation → MongoDB
+    ↓
+Frontend Dashboard ← API Endpoints ← MongoDB Aggregation
+```
+
+## 🛠️ Troubleshooting
+
+### Common Issues
+
+#### 1. CSV Ingestion Failures
+```bash
+# Check CSV file format
+head -5 backend/Social_Media_Engagement.csv
+
+# Verify file permissions
+ls -la backend/Social_Media_Engagement.csv
+
+# Test MongoDB connection
+python -c "from backend.data_store import SocialMediaDataStore; store = SocialMediaDataStore(); store.connect()"
+```
+
+#### 2. Date Parsing Errors
+```python
+# Test date transformation
+from backend.transformation import DataTransformer
+import pandas as pd
+
+df = pd.read_csv('backend/Social_Media_Engagement.csv')
+transformer = DataTransformer()
+result = transformer.convert_post_time_to_date_time(df)
+print(result[['Posted_date', 'Posted_time']].head())
+```
+
+#### 3. Schema Validation Errors
+```python
+# Check schema compliance
+from backend.data_store import SocialMediaDataStore
+store = SocialMediaDataStore()
+store.connect()
+store.create_collection()  # This will validate schema
+```
+
+### Debug Commands
+```bash
+# Check MongoDB data
+mongo social_media_analytics --eval "db.posts.count()"
+
+# View recent records
+mongo social_media_analytics --eval "db.posts.find().limit(5).pretty()"
+
+# Check schema validation
+mongo social_media_analytics --eval "db.getCollectionInfos()"
+```
+
+## 📋 Best Practices
+
+### Data Ingestion
+1. **Always validate data** before insertion
+2. **Use bulk operations** for better performance
+3. **Implement proper error handling** for all edge cases
+4. **Log all operations** for debugging and monitoring
+5. **Test with sample data** before production deployment
+
+### Data Transformation
+1. **Handle multiple date formats** gracefully
+2. **Preserve original data** while adding derived fields
+3. **Validate transformed data** before database insertion
+4. **Use consistent naming conventions** for new fields
+5. **Document transformation logic** for future maintenance
+
+### Performance
+1. **Use indexes** on frequently queried fields
+2. **Implement connection pooling** for database operations
+3. **Cache frequently accessed data** to reduce database load
+4. **Monitor memory usage** during large data operations
+5. **Use appropriate data types** for optimal storage
+
+## 🔮 Future Enhancements
+
+### Planned Features
+- **Real-time Streaming**: Live data ingestion from external APIs
+- **Data Versioning**: Track changes and maintain data history
+- **Advanced Validation**: Machine learning-based data quality checks
+- **Multi-source Ingestion**: Support for multiple data sources
+- **Data Lineage**: Track data flow and transformations
+- **Automated Testing**: Comprehensive test suite for ingestion workflows

@@ -1,355 +1,242 @@
 # Social Media Analytics Dashboard
 
-A comprehensive data visualization project that demonstrates working with databases, data ingestion, and real-time analytics visualization.
+A comprehensive social media analytics platform that provides real-time insights into social media engagement, sentiment analysis, and performance metrics across multiple platforms.
 
-## 🚀 Project Overview
+## 🚀 Features
 
-This project implements a complete data pipeline for social media analytics:
+### 📊 Analytics Dashboard
+- **Real-time KPI Metrics**: Total posts, platform-specific post counts
+- **Engagement Analytics**: Total engagement by platform and average engagement by day
+- **Sentiment Analysis**: Sentiment distribution across platforms and post types
+- **Trend Analysis**: Average likes, comments, and shares over time
+- **Shares Analysis**: Detailed shares breakdown by post type
+- **Decomposition Tree**: Hierarchical visualization with interactive filters
 
-- **Datastore**: MongoDB for flexible NoSQL data storage
-- **Data Ingestion**: Real-time mock data generation with realistic patterns
-- **Backend API**: Flask REST API serving data to the frontend
-- **Frontend Dashboard**: Interactive Streamlit dashboard with real-time updates
-- **Real-time Analytics**: Live data processing and insights
-- **Containerization**: Docker setup for easy deployment
-
-## 📋 Features
-
-### Core Requirements ✅
-- **Datastore Setup**: MongoDB with schema validation
-- **Data Ingestion**: Mock data generation with realistic social media patterns
-- **Visualization**: Interactive dashboard with multiple chart types
-- **Documentation**: Comprehensive markdown files explaining each component
-
-### Bonus Features 🔥
-- **Docker Containerization**: Complete containerized setup
-- **Real-time Analytics**: Live data processing and insights
-- **Real-time Updates**: Live data ingestion and dashboard updates
+### 🔧 Technical Features
+- **RESTful API**: Flask-based backend with comprehensive endpoints
+- **MongoDB Integration**: Robust data storage with schema validation
+- **Real-time Data Ingestion**: CSV data import and mock data generation
+- **Interactive Visualizations**: Plotly Express charts with filtering capabilities
+- **Auto-refresh**: Automatic dashboard updates every 30 seconds
+- **Background Scheduler**: Continuous mock data generation
 
 ## 🏗️ Architecture
 
+### Backend (Flask + MongoDB)
+- **Flask Application**: RESTful API endpoints for data retrieval
+- **MongoDB Database**: Document-based storage with schema validation
+- **Data Transformation**: Automated date/time parsing and conversion
+- **Background Tasks**: APScheduler for mock data generation
+
+### Frontend (Streamlit + Plotly)
+- **Streamlit Dashboard**: Interactive web interface
+- **Plotly Express**: Rich visualizations with hover effects
+- **Session Management**: State persistence across interactions
+- **Error Handling**: Graceful error management and user feedback
+
+## 📈 Visualizations
+
+### 1. Engagement Analytics
+- **Platform Engagement**: Stacked bar chart showing likes, comments, shares by platform
+- **Daily Engagement**: Average engagement metrics by day of the week
+
+### 2. Sentiment Analysis
+- **Platform Sentiment**: Stacked bar chart showing sentiment distribution by platform
+- **Post Type Sentiment**: Stacked column chart showing sentiment by post type
+- **Donut Charts**: Individual sentiment breakdown for each platform
+
+### 3. Trend Analysis
+- **Average Likes Trend**: Line chart showing average likes over time by platform
+- **Average Comments Trend**: Line chart showing average comments over time by platform
+- **Average Shares Trend**: Line chart showing average shares over time by platform
+
+### 4. Shares Analysis
+- **Shares by Post Type**: Clustered bar chart showing total shares by post type
+- **Average Shares Trend**: Line chart showing shares trend over time
+
+### 5. Decomposition Tree (Treemap)
+- **Hierarchical View**: Platform → Post Type → Sentiment Score
+- **Interactive Filters**: Platform and post type filtering
+- **Color Coding**: Based on total posts count
+- **Hover Information**: Shows likes, comments, and shares at each level
+
+## 🛠️ Installation & Setup
+
+### Prerequisites
+- Python 3.8+
+- MongoDB
+- Docker (optional)
+
+### Quick Start
+```bash
+# Clone the repository
+git clone <repository-url>
+cd takehomeproject
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Start MongoDB (if not running)
+mongod
+
+# Run the application
+python -m streamlit run frontend/visualization.py
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend      │    │    Backend      │    │   Datastore     │
-│  (Streamlit)    │◄──►│   (Flask API)   │◄──►│   (MongoDB)     │
-│   Port: 8501    │    │   Port: 5000    │    │   Port: 27017   │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         ▲                       ▲                       ▲
-         │                       │                       │
-         └───────────────────────┼───────────────────────┘
-                                 │
-                    ┌─────────────────┐
-                    │ Data Ingestion  │
-                    │ (Real-time)     │
-                    └─────────────────┘
+
+### Docker Setup
+```bash
+# Build and run with Docker Compose
+docker-compose up --build
 ```
 
-## 🛠️ Technology Stack
+## 📊 Data Structure
 
-- **Database**: MongoDB (NoSQL)
-- **Backend**: Flask (Python)
-- **Frontend**: Streamlit (Python)
-- **Data Processing**: Pandas, NumPy
-- **Visualization**: Plotly
-- **Containerization**: Docker, Docker Compose
-- **Real-time**: APScheduler
+### Database Schema
+```json
+{
+  "platform": "string",
+  "post_type": "string", 
+  "sentiment_score": "string",
+  "likes": "number",
+  "comments": "number",
+  "shares": "number",
+  "post_time": "string (ISO 8601)",
+  "Posted_date": "string (YYYY-MM-DD)",
+  "Posted_time": "string (HH:MM:SS)"
+}
+```
 
-## 🚀 Quick Start
+### Supported Platforms
+- Facebook
+- Twitter
+- LinkedIn
+- Instagram
 
-### Option 1: Docker (Recommended)
+### Supported Post Types
+- Carousel
+- Video
+- Text
+- Image
+- Poll
+- Story
 
-#### Method A: Single Container (Easiest)
+### Sentiment Categories
+- Positive
+- Negative
+- Neutral
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd takehomeproject
-   ```
+## 🔌 API Endpoints
 
-2. **Run the application**
-   
-   **On Windows:**
-   ```bash
-   run-docker.bat start
-   ```
-   
-   **On Linux/Mac:**
-   ```bash
-   chmod +x run-docker.sh
-   ./run-docker.sh start
-   ```
+### Core Endpoints
+- `GET /health` - Health check and database status
+- `GET /api/stats` - Database statistics
+- `POST /api/ingest-csv` - CSV data ingestion
+- `POST /api/reset-database` - Database reset and re-ingestion
 
-3. **Access the applications**
-   - Dashboard: http://localhost:8501
-   - API: http://localhost:5000/api/data
-   - MongoDB: localhost:27017
+### Analytics Endpoints
+- `GET /api/platform-engagement` - Platform engagement data
+- `GET /api/engagement-by-day` - Daily engagement metrics
+- `GET /api/sentiment-by-platform` - Sentiment by platform
+- `GET /api/sentiment-by-post-type` - Sentiment by post type
+- `GET /api/average-likes-by-date-platform` - Average likes trends
+- `GET /api/average-comments-by-date-platform` - Average comments trends
+- `GET /api/average-shares-by-date-platform` - Average shares trends
+- `GET /api/shares-by-post-type` - Shares by post type
+- `GET /api/decomposition-tree` - Hierarchical data for treemap
 
-#### Method B: Docker Compose (Multi-container)
+### Scheduler Endpoints
+- `POST /api/start-scheduler` - Start mock data generation
+- `POST /api/stop-scheduler` - Stop mock data generation
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd takehomeproject
-   ```
+## 🎯 Usage
 
-2. **Start all services with Docker Compose**
-   ```bash
-   docker-compose up --build
-   ```
+### Dashboard Navigation
+1. **KPI Metrics**: View total posts and platform-specific counts
+2. **Engagement Analytics**: Analyze engagement patterns across platforms
+3. **Sentiment Analysis**: Explore sentiment distribution and trends
+4. **Trend Analysis**: Monitor engagement metrics over time
+5. **Shares Analysis**: Deep dive into shares performance
+6. **Decomposition Tree**: Interactive hierarchical analysis with filters
 
-3. **Access the applications**
-   - Dashboard: http://localhost:8501
-   - API: http://localhost:5000/api/data
-   - MongoDB: localhost:27017
+### Filtering Options
+- **Platform Filter**: Select specific platforms or view all
+- **Post Type Filter**: Filter by content type
+- **Date Range**: Automatic date-based filtering in trend charts
+- **Real-time Updates**: Auto-refresh every 30 seconds
 
-### Option 2: Local Development
+## 🔄 Data Flow
 
-1. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Initial Setup
+1. **Database Connection**: MongoDB connection establishment
+2. **Schema Validation**: Automatic schema creation and validation
+3. **CSV Ingestion**: Initial data import from CSV file
+4. **Data Transformation**: Date/time parsing and conversion
+5. **Dashboard Initialization**: Streamlit app startup
 
-2. **Start MongoDB**
-   ```bash
-   # Install MongoDB locally or use Docker
-   docker run -d -p 27017:27017 --name mongodb mongo:latest
-   ```
+### Real-time Operations
+1. **API Calls**: Frontend requests data from backend
+2. **Data Processing**: MongoDB aggregation pipelines
+3. **Visualization**: Plotly Express chart generation
+4. **User Interaction**: Filter application and chart updates
+5. **Auto-refresh**: Periodic data updates
 
-3. **Run the backend API**
-   ```bash
-   cd backend
-   python app.py
-   ```
+## 🧪 Testing
 
-4. **Run data ingestion (in another terminal)**
-   ```bash
-   cd src
-   python data_ingest.py
-   ```
+### Backend Testing
+```bash
+cd backend
+python -c "from app import BackendApp; app = BackendApp(); print('Backend initialized successfully')"
+```
 
-5. **Run the frontend dashboard**
-   ```bash
-   cd frontend
-   streamlit run streamlit_app.py
-   ```
-
-## 📊 Dashboard Features
-
-### Interactive Analytics
-- **Real-time Metrics**: Live updates of engagement statistics
-- **Platform Comparison**: Performance analysis across social media platforms
-- **Time Series Analysis**: Trends over time with interactive charts
-- **Sentiment Analysis**: Sentiment distribution and platform-specific insights
-- **Data Filtering**: Filter by platform, date range, and search terms
-
-### Visualization Types
-- **Bar Charts**: Platform performance comparison
-- **Pie Charts**: Post type and sentiment distribution
-- **Line Charts**: Time series trends
-- **Heatmaps**: Hourly performance patterns
-- **Scatter Plots**: Engagement correlations
+### Frontend Testing
+```bash
+streamlit run frontend/visualization.py
+```
 
 ## 📁 Project Structure
 
 ```
 takehomeproject/
 ├── backend/
-│   └── app.py                 # Flask API server
+│   ├── app.py              # Flask application
+│   ├── data_store.py       # MongoDB operations
+│   ├── data_ingest.py      # Data ingestion logic
+│   ├── transformation.py    # Data transformation utilities
+│   └── Social_Media_Engagement.csv
 ├── frontend/
-│   └── streamlit_app.py       # Streamlit dashboard
-├── src/
-│   ├── data_ingest.py         # Data ingestion script
-│   ├── data_store.py          # MongoDB schema and setup
-│   └── main.py                # Data ingestion trigger
-├── docker-compose.yml         # Docker services configuration
-├── Dockerfile                 # Application container
-├── requirements.txt           # Python dependencies
-├── datastore-setup.md        # Database setup documentation
-├── data-ingestion.md         # Data ingestion documentation
-├── visualization.md           # Visualization documentation
-└── README.md                 # This file
+│   └── visualization.py     # Streamlit dashboard
+├── requirements.txt         # Python dependencies
+├── docker-compose.yml      # Docker configuration
+├── Dockerfile             # Docker image definition
+└── README.md              # This file
 ```
 
-## 🔧 API Endpoints
+## 🤝 Contributing
 
-### Backend API (Flask)
-- `GET /api/data` - Get all social media posts
-- `GET /api/stats` - Get aggregated statistics
-- `GET /api/trends` - Get time-based trends
-- `GET /api/platform/<platform>` - Get data for specific platform
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
-### Example Usage
-```bash
-# Get all data
-curl http://localhost:5000/api/data
+## 📝 License
 
-# Get statistics
-curl http://localhost:5000/api/stats
+This project is licensed under the MIT License.
 
-# Get trends
-curl http://localhost:5000/api/trends
-```
+## 🆘 Support
 
-## 📈 Data Schema
+For issues and questions:
+1. Check the documentation files
+2. Review the API endpoints
+3. Check MongoDB connection
+4. Verify data ingestion status
 
-### Social Media Posts Collection
-```json
-{
-  "platform": "Facebook|Twitter|Instagram|LinkedIn",
-  "post_type": "text|image|video|poll|carousel|story",
-  "post_time": "2024-01-01T10:30:00",
-  "likes": 150,
-  "comments": 25,
-  "shares": 10,
-  "post_day": "Monday",
-  "sentiment_score": "positive|negative|neutral"
-}
-```
+## 🔮 Future Enhancements
 
-## 🔄 Real-time Features
-
-### Data Ingestion
-- **Scheduled Updates**: New data every 2 minutes
-- **Realistic Patterns**: Platform-specific engagement patterns
-- **Time-based Generation**: More posts during business hours
-- **Sentiment Correlation**: Higher engagement correlates with positive sentiment
-
-### Dashboard Updates
-- **Live Metrics**: Real-time engagement statistics
-- **Auto-refresh**: Dashboard updates automatically
-- **Caching**: Optimized data fetching with 5-minute cache
-
-## 🐳 Docker Services
-
-### Services Overview
-1. **datastore**: MongoDB database
-2. **backend**: Flask API server
-3. **frontend**: Streamlit dashboard
-4. **data_ingestion**: Real-time data generation
-
-### Docker Commands
-
-#### Single Container Commands
-```bash
-# Build and start the application
-./run-docker.sh start          # Linux/Mac
-run-docker.bat start           # Windows
-
-# View application logs
-./run-docker.sh logs           # Linux/Mac
-run-docker.bat logs            # Windows
-
-# Check application status
-./run-docker.sh status         # Linux/Mac
-run-docker.bat status          # Windows
-
-# Stop the application
-./run-docker.sh stop           # Linux/Mac
-run-docker.bat stop            # Windows
-
-# Restart the application
-./run-docker.sh restart        # Linux/Mac
-run-docker.bat restart         # Windows
-```
-
-#### Docker Compose Commands
-```bash
-# Start all services
-docker-compose up
-
-# Start in background
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
-
-# Rebuild and start
-docker-compose up --build
-```
-
-## 📊 Sample Data
-
-The system generates realistic social media data with:
-- **4 Platforms**: Facebook, Twitter, Instagram, LinkedIn
-- **6 Post Types**: text, image, video, poll, carousel, story
-- **Realistic Engagement**: Platform-specific patterns
-- **Time Patterns**: Business hours optimization
-- **Sentiment Analysis**: Engagement-based sentiment
-
-## 🔍 Monitoring & Logs
-
-### Application Logs
-```bash
-# View all container logs
-docker-compose logs
-
-# View specific service logs
-docker-compose logs backend
-docker-compose logs frontend
-docker-compose logs data_ingestion
-```
-
-### Health Checks
-- Backend API: http://localhost:5000/api/data
-- Frontend Dashboard: http://localhost:8501
-- MongoDB: localhost:27017
-
-## 🛠️ Troubleshooting
-
-### Common Issues
-
-1. **Port Conflicts**
-   ```bash
-   # Check if ports are in use
-   netstat -tulpn | grep :5000
-   netstat -tulpn | grep :8501
-   ```
-
-2. **MongoDB Connection**
-   ```bash
-   # Test MongoDB connection
-   docker exec -it mongo_db mongosh
-   ```
-
-3. **Dependencies Issues**
-   ```bash
-   # Rebuild containers
-   docker-compose down
-   docker-compose up --build
-   ```
-
-### Performance Optimization
-- **Data Caching**: 5-minute cache for API responses
-- **Batch Processing**: Efficient bulk data insertion
-- **Indexing**: MongoDB indexes on frequently queried fields
-
-## 📚 Documentation Files
-
-- **datastore-setup.md**: MongoDB setup and schema details
-- **data-ingestion.md**: Data generation and ingestion process
-- **visualization.md**: Dashboard features and usage
-
-## 🎯 Key Achievements
-
-✅ **Complete Data Pipeline**: End-to-end data flow from generation to visualization
-✅ **Real-time Updates**: Live data ingestion and dashboard updates
-✅ **Interactive Dashboard**: Rich visualizations with filtering capabilities
-✅ **Containerized Setup**: Easy deployment with Docker
-✅ **Real-time Analytics**: Live data processing and insights
-✅ **Scalable Architecture**: Microservices design with clear separation
-
-## 🚀 Next Steps
-
-Potential enhancements:
-- **Authentication**: User login and role-based access
 - **Advanced Analytics**: Machine learning insights
-- **Data Export**: Multiple format support (CSV, JSON, Excel)
-- **Alerts**: Custom notification system
-- **Multi-tenancy**: Support for multiple organizations
-
----
-
-**Built with ❤️ using Python, MongoDB, Flask, Streamlit, and Docker**
+- **Export Functionality**: PDF/Excel report generation
+- **User Authentication**: Multi-user support
+- **Real-time Streaming**: Live data ingestion
+- **Mobile App**: Native mobile application
+- **Advanced Filters**: Date range, custom metrics
+- **Alert System**: Threshold-based notifications

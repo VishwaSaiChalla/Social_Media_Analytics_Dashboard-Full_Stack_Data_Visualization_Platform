@@ -45,11 +45,44 @@ class BackendApp:
             if not self.data_store.create_collection():
                 logger.error("Failed to create collection")
                 raise Exception("Collection creation failed")
+            
+            # Check if database is empty and automatically ingest CSV data if needed
+            self._auto_ingest_csv_if_empty()
                 
             logger.info("Data store initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize data store: {e}")
             raise
+    
+    def _auto_ingest_csv_if_empty(self):
+        """Automatically ingest CSV data if database is empty"""
+        try:
+            # Check if database has data
+            current_count = self.data_store.get_count()
+            
+            if current_count == 0:
+                logger.info("Database is empty. Attempting to auto-ingest CSV data...")
+                
+                # Check if CSV file exists
+                csv_path = os.path.join(os.path.dirname(__file__), 'Social_Media_Engagement.csv')
+                
+                if not os.path.exists(csv_path):
+                    logger.warning(f"CSV file not found at: {csv_path}")
+                    return
+                
+                # Ingest data from CSV
+                success = self.data_store.ingest_data_from_csv(csv_path)
+                
+                if success:
+                    count = self.data_store.get_count()
+                    logger.info(f"Auto-ingestion completed successfully. Total records: {count}")
+                else:
+                    logger.error("Auto-ingestion failed")
+            else:
+                logger.info(f"Database already contains {current_count} records. Skipping auto-ingestion.")
+                
+        except Exception as e:
+            logger.error(f"Error during auto-ingestion: {e}")
     
     def _setup_routes(self):
         """Set up API routes"""
@@ -271,6 +304,88 @@ class BackendApp:
                 
             except Exception as e:
                 logger.error(f"Error getting sentiment by post type: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/average-likes-by-date-platform', methods=['GET'])
+        def get_average_likes_by_date_platform():
+            """Get average likes by date and platform"""
+            try:
+                likes_data = self.data_store.get_average_likes_by_date_platform()
+                
+                return jsonify({
+                    'success': True,
+                    'average_likes_by_date_platform': likes_data
+                })
+                
+            except Exception as e:
+                logger.error(f"Error getting average likes by date and platform: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/average-comments-by-date-platform', methods=['GET'])
+        def get_average_comments_by_date_platform():
+            """Get average comments by date and platform"""
+            try:
+                comments_data = self.data_store.get_average_comments_by_date_platform()
+                
+                return jsonify({
+                    'success': True,
+                    'average_comments_by_date_platform': comments_data
+                })
+                
+            except Exception as e:
+                logger.error(f"Error getting average comments by date and platform: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/average-shares-by-date-platform', methods=['GET'])
+        def get_average_shares_by_date_platform():
+            """Get average shares by date and platform"""
+            try:
+                shares_data = self.data_store.get_average_shares_by_date_platform()
+                
+                return jsonify({
+                    'success': True,
+                    'average_shares_by_date_platform': shares_data
+                })
+                
+            except Exception as e:
+                logger.error(f"Error getting average shares by date and platform: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/shares-by-post-type', methods=['GET'])
+        def get_shares_by_post_type():
+            """Get shares by post type"""
+            try:
+                shares_data = self.data_store.get_shares_by_post_type()
+                
+                return jsonify({
+                    'success': True,
+                    'shares_by_post_type': shares_data
+                })
+                
+            except Exception as e:
+                logger.error(f"Error getting shares by post type: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/decomposition-tree', methods=['GET'])
+        def get_decomposition_tree():
+            """Get decomposition tree data with optional filters"""
+            try:
+                # Get query parameters for filters
+                platform_filter = request.args.get('platform')
+                post_type_filter = request.args.get('post_type')
+                
+                tree_data = self.data_store.get_decomposition_tree_data(
+                    platform_filter=platform_filter,
+                    post_type_filter=post_type_filter
+                )
+                
+                return jsonify({
+                    'success': True,
+                    'decomposition_tree_data': tree_data
+                })
+                
+            except Exception as e:
+                logger.error(f"Error getting decomposition tree data: {e}")
                 return jsonify({'error': str(e)}), 500
         
 
