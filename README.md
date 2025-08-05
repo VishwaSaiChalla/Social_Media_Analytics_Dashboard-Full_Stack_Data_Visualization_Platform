@@ -182,7 +182,7 @@ docker-compose ps
 ### Prerequisites
 - AWS Account with EC2 access
 - SSH key pair for EC2 instance
-- Git repository with your project
+- Git repository with project
 
 ### EC2 Instance Setup
 
