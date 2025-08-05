@@ -32,12 +32,9 @@ class SocialMediaDataStore:
         self.database_schema = {
             "$jsonSchema": {
                 "bsonType": "object",
-                "required": ["platform", "post_type", "post_time", "likes", "comments", "shares", "post_day", "sentiment_score"],
+                "required": ["platform", "post_type", "post_time", "likes", "comments", "shares", "sentiment_score"],
                 "properties": {
-                    "_id": {
-                        "bsonType": "objectId",
-                        "description": "Unique identifier for the document."
-                    },
+
                     "post_id": {
                         "bsonType": "int",
                         "description": "Unique identifier for the post."
@@ -79,15 +76,45 @@ class SocialMediaDataStore:
                         "description": "Number of shares the post received.",
                         "minimum": 0
                     },
-                    "post_day": {
-                        "bsonType": "string",
-                        "description": "Day of the week when the post was made (e.g. Monday,Tuesday, etc.).",
-                        "enum": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-                    },
+
                     "sentiment_score": {
                         "bsonType": "string",
                         "description": "Sentiment score of the post whether it is postive, negative or neutral.",
                         "enum": ["positive", "negative", "neutral"]
+                    },
+                    "total_engagement": {
+                        "bsonType": "int",
+                        "description": "Total engagement (likes + comments + shares).",
+                        "minimum": 0
+                    },
+                    "engagement_ratio": {
+                        "bsonType": "double",
+                        "description": "Engagement ratio ((comments + shares) / likes)."
+                    },
+                    "posted_hour": {
+                        "bsonType": "int",
+                        "description": "Hour when the post was made (0-23).",
+                        "minimum": 0,
+                        "maximum": 23
+                    },
+                    "posted_day_of_week": {
+                        "bsonType": "string",
+                        "description": "Day of the week when the post was made.",
+                        "enum": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday", "Unknown"]
+                    },
+                    "posted_month": {
+                        "bsonType": "string",
+                        "description": "Month when the post was made.",
+                        "enum": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December", "Unknown"]
+                    },
+                    "is_weekend": {
+                        "bsonType": "bool",
+                        "description": "Whether the post was made on a weekend (Saturday or Sunday)."
+                    },
+                    "engagement_level": {
+                        "bsonType": "string",
+                        "description": "Engagement level category based on total engagement.",
+                        "enum": ["Low", "Medium", "High", "Very High"]
                     }
                 }
             }
@@ -201,16 +228,18 @@ class SocialMediaDataStore:
             logger.info(f"Successfully read CSV file with {len(df)} rows and {len(df.columns)} columns")
             logger.debug(f"CSV columns: {list(df.columns)}")
             
-            # Use DataTransformer to add Posted_date and Posted_time columns
+            # Apply basic transformations before database ingestion
+            logger.info("Applying basic transformations to data...")
             transformer = DataTransformer()
-            df = transformer.convert_post_time_to_date_time(df, 'post_time')
-            logger.info("Successfully added Posted_date and Posted_time columns")
+            df = transformer.perform_basic_transformations(df)
+            logger.info("Basic transformations completed successfully")
             
             # Convert post_time to ISO 8601 string format for storage
             logger.debug("Converting post_time to ISO 8601 format for storage")
-            # First convert to datetime, then to ISO string format
-            df['post_time'] = pd.to_datetime(df['post_time'], format='%m/%d/%Y %H:%M', errors='coerce')
-            df['post_time'] = df['post_time'].dt.strftime('%Y-%m-%dT%H:%M:%S')
+            if 'post_time' in df.columns:
+                # First convert to datetime, then to ISO string format
+                df['post_time'] = pd.to_datetime(df['post_time'], format='%m/%d/%Y %H:%M', errors='coerce')
+                df['post_time'] = df['post_time'].dt.strftime('%Y-%m-%dT%H:%M:%S')
 
             # Filter columns to only include those defined in the schema
             logger.debug("Filtering DataFrame columns to match schema")
@@ -324,6 +353,27 @@ class SocialMediaDataStore:
         except Exception as e:
             logger.error(f"Failed to get count of elements: {e}")
             return 0
+
+    def get_all_data(self) -> List[Dict]:
+        """
+        Get all data from the collection.
+        
+        Returns:
+            List[Dict]: All documents in the collection
+        """
+        logger.info("Getting all data from collection")
+        try:
+            if self.collection is None:
+                logger.error("Database not connected. Call connect() first.")
+                return []
+                
+            # Get all documents, excluding the MongoDB _id field
+            all_data = list(self.collection.find({}, {'_id': 0}))
+            logger.info(f"Retrieved {len(all_data)} documents from collection")
+            return all_data
+        except Exception as e:
+            logger.error(f"Failed to get all data: {e}")
+            return []
     
     def get_max_post_id(self) -> int:
         """
@@ -401,7 +451,7 @@ class SocialMediaDataStore:
                 
             pipeline = [
                 {'$group': {
-                    '_id': '$post_day',
+                    '_id': '$posted_day_of_week',
                     'avg_likes': {'$avg': '$likes'},
                     'avg_comments': {'$avg': '$comments'},
                     'avg_shares': {'$avg': '$shares'},

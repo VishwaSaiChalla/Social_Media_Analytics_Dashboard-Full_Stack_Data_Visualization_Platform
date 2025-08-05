@@ -91,8 +91,6 @@ def mock_data_generator(num_records, data_store=None, start_post_id=None):
         comments = int(random.randint(*base_pattern["comments_range"]) * multipliers["comments"])
         shares = int(random.randint(*base_pattern["shares_range"]) * multipliers["shares"])
         
-        post_day = post_time.strftime("%A")
-        
         # Sentiment based on engagement (higher engagement = more positive)
         total_engagement = likes + comments + shares
         if total_engagement > 500:
@@ -106,11 +104,10 @@ def mock_data_generator(num_records, data_store=None, start_post_id=None):
             "post_id": current_post_id + i,  # Continue from current count
             "platform": platform,
             "post_type": post_type,
-            "post_time": post_time.isoformat(),
+            "post_time": post_time.strftime('%m/%d/%Y %H:%M'),  # Use CSV format for consistency
             "likes": likes,
             "comments": comments,
             "shares": shares,
-            "post_day": post_day,
             "sentiment_score": sentiment_score
         })
 
@@ -135,12 +132,28 @@ def insert_data_to_mongodb(data_store: SocialMediaDataStore, df: pd.DataFrame) -
         bool: True if insertion successful
     """
     try:
-        records = df.to_dict('records')
+        # Apply basic transformations before insertion
+        logger.info("Applying basic transformations to mock data...")
+        transformer = DataTransformer()
+        transformed_df = transformer.perform_basic_transformations(df)
+        logger.info("Basic transformations completed successfully")
+        
+        # Convert post_time to ISO 8601 string format for storage
+        if 'post_time' in transformed_df.columns:
+            try:
+                transformed_df['post_time'] = pd.to_datetime(transformed_df['post_time'], format='%m/%d/%Y %H:%M', errors='coerce')
+                transformed_df['post_time'] = transformed_df['post_time'].dt.strftime('%Y-%m-%dT%H:%M:%S')
+                logger.info("Successfully converted post_time to ISO format")
+            except Exception as e:
+                logger.warning(f"Failed to convert post_time format: {e}")
+                # Keep original format if conversion fails
+        
+        records = transformed_df.to_dict('records')
         
         # Insert data using data_store
         success = data_store.insert_data(records)
         if success:
-            logger.info(f"Successfully inserted {len(records)} records using data_store.")
+            logger.info(f"Successfully inserted {len(records)} transformed records using data_store.")
         else:
             logger.error("Failed to insert data using data_store")
         
@@ -164,15 +177,28 @@ def schedule_data_insertion(data_store: SocialMediaDataStore, interval_seconds=3
         try:
             # Generate 10-50 new records each time
             num_records = random.randint(10, 50)
-            df = mock_data_generator(num_records, data_store=data_store)
+            logger.info(f"Generating {num_records} new mock records...")
             
-            if insert_data_to_mongodb(data_store, df):
-                logger.info(f"Real-time update: Added {num_records} new records using data_store")
-            else:
-                logger.error("Failed to insert real-time data using data_store")
+            # Generate mock data with better error handling
+            try:
+                df = mock_data_generator(num_records, data_store=data_store)
+                logger.info(f"Successfully generated {len(df)} mock records")
+            except Exception as gen_error:
+                logger.error(f"Failed to generate mock data: {gen_error}")
+                return
+            
+            # Insert data with better error handling
+            try:
+                if insert_data_to_mongodb(data_store, df):
+                    logger.info(f"Real-time update: Added {num_records} new records using data_store")
+                else:
+                    logger.error("Failed to insert real-time data using data_store")
+            except Exception as insert_error:
+                logger.error(f"Failed to insert data: {insert_error}")
                 
         except Exception as e:
             logger.error(f"Error in scheduled insertion: {e}")
+            logger.exception("Full traceback:")
     
     # Schedule the job
     scheduler.add_job(
