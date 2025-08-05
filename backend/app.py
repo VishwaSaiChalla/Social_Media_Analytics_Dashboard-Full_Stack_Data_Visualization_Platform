@@ -192,20 +192,20 @@ class BackendApp:
                     except Exception as e:
                         logger.error(f"Error in scheduled insertion: {e}")
                 
-                # Schedule the job to run every 2 minutes
+                # Schedule the job to run every 30 seconds
                 self.scheduler.add_job(
                     insert_mock_data,
                     'interval',
-                    minutes=2,
+                    seconds=30,
                     id='mock_data_insertion'
                 )
                 
                 self.scheduler.start()
-                logger.info("Scheduler started - mock data will be inserted every 2 minutes")
+                logger.info("Scheduler started - mock data will be inserted every 30 seconds")
                 
                 return jsonify({
                     'success': True,
-                    'message': 'Scheduler started successfully. Mock data will be inserted every 2 minutes.'
+                    'message': 'Scheduler started successfully. Mock data will be inserted every 30 seconds.'
                 })
                 
             except Exception as e:

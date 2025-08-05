@@ -149,13 +149,13 @@ def insert_data_to_mongodb(data_store: SocialMediaDataStore, df: pd.DataFrame) -
         logger.error(f"Error inserting data: {e}")
         return False
 
-def schedule_data_insertion(data_store: SocialMediaDataStore, interval_minutes=5):
+def schedule_data_insertion(data_store: SocialMediaDataStore, interval_seconds=30):
     """
     Schedule periodic data insertion using data_store
     
     Args:
         data_store: Instance of SocialMediaDataStore
-        interval_minutes: Interval between data insertions in minutes
+        interval_seconds: Interval between data insertions in seconds
     """
     scheduler = BackgroundScheduler()
     
@@ -178,12 +178,12 @@ def schedule_data_insertion(data_store: SocialMediaDataStore, interval_minutes=5
     scheduler.add_job(
         insert_batch, 
         'interval', 
-        minutes=interval_minutes,
+        seconds=interval_seconds,
         id='data_insertion_job'
     )
     
     scheduler.start()
-    logger.info(f"Data insertion scheduled every {interval_minutes} minutes using data_store.")
+    logger.info(f"Data insertion scheduled every {interval_seconds} seconds using data_store.")
     return scheduler
 
 def main():
@@ -221,7 +221,7 @@ def main():
         
         # Start real-time updates
         logger.info("Starting real-time data updates using data_store...")
-        scheduler = schedule_data_insertion(data_store, interval_minutes=2)
+        scheduler = schedule_data_insertion(data_store, interval_seconds=30)  # 30 seconds
         
         try:
             # Keep the script running
