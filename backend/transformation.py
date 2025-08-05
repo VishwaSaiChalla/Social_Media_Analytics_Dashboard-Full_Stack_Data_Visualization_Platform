@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Data transformation utilities for social media analytics.
-This module provides a method to transform post_time data into separate date and time components.
+This module provides a simple method to transform social media data before database ingestion.
 """
 
 import pandas as pd
@@ -20,6 +20,162 @@ class DataTransformer:
         """Initialize the DataTransformer"""
         logger.info("Initializing DataTransformer")
     
+    def perform_basic_transformations(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Perform basic transformations on social media data before database ingestion.
+        
+        Args:
+            df: DataFrame containing the social media data
+            
+        Returns:
+            pd.DataFrame: Transformed DataFrame ready for database ingestion
+        """
+        logger.info("Starting basic data transformations")
+        
+        try:
+            transformed_df = df.copy()
+            
+            # 1. Clean data - remove duplicates and handle missing values
+            logger.info("Cleaning data...")
+            initial_rows = len(transformed_df)
+            transformed_df = transformed_df.drop_duplicates()
+            logger.info(f"Removed {initial_rows - len(transformed_df)} duplicate rows")
+            
+            # Fill missing values
+            numeric_columns = ['likes', 'comments', 'shares']
+            for col in numeric_columns:
+                if col in transformed_df.columns:
+                    median_val = transformed_df[col].median()
+                    transformed_df[col] = transformed_df[col].fillna(median_val)
+                    logger.info(f"Filled missing values in {col} with median: {median_val}")
+            
+            # Fill missing text data
+            text_columns = ['platform', 'post_type', 'sentiment_score']
+            for col in text_columns:
+                if col in transformed_df.columns:
+                    transformed_df[col] = transformed_df[col].fillna('Unknown')
+            
+            # 2. Convert post_time to separate date and time columns
+            logger.info("Converting post_time to separate date and time columns...")
+            if 'post_time' in transformed_df.columns:
+                # Create a temporary datetime column for processing
+                temp_datetime_col = "temp_post_time"
+                
+                # Convert post_time to datetime (handle both CSV format first, then ISO format)
+                if transformed_df['post_time'].dtype == 'object':
+                    try:
+                        # Try CSV format first (8/17/2023 14:45)
+                        transformed_df[temp_datetime_col] = pd.to_datetime(
+                            transformed_df['post_time'], 
+                            format='%m/%d/%Y %H:%M',
+                            errors='coerce'
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to parse with CSV format, trying ISO format: {e}")
+                        try:
+                            # Try ISO format (2023-08-17T14:45:00)
+                            transformed_df[temp_datetime_col] = pd.to_datetime(
+                                transformed_df['post_time'], 
+                                format='%Y-%m-%dT%H:%M:%S',
+                                errors='coerce'
+                            )
+                        except Exception as e2:
+                            logger.warning(f"Failed to parse with ISO format, trying auto-detect: {e2}")
+                            # Try auto-detect format
+                            transformed_df[temp_datetime_col] = pd.to_datetime(
+                                transformed_df['post_time'], 
+                                errors='coerce'
+                            )
+                
+                # Check if conversion was successful
+                if temp_datetime_col in transformed_df.columns and not transformed_df[temp_datetime_col].isna().all():
+                    # Extract date and time components and convert to string immediately
+                    transformed_df['Posted_date'] = transformed_df[temp_datetime_col].dt.strftime('%Y-%m-%d')
+                    transformed_df['Posted_time'] = transformed_df[temp_datetime_col].dt.strftime('%H:%M:%S')
+                    
+                    # Remove the temporary column
+                    transformed_df.drop(columns=[temp_datetime_col], inplace=True)
+                    
+                    logger.info("Successfully converted post_time to Posted_date and Posted_time columns")
+                else:
+                    logger.warning("Failed to convert post_time, keeping original format")
+                    if temp_datetime_col in transformed_df.columns:
+                        transformed_df.drop(columns=[temp_datetime_col], inplace=True)
+            
+            # 3. Create basic engagement metrics
+            logger.info("Creating basic engagement metrics...")
+            if all(col in transformed_df.columns for col in ['likes', 'comments', 'shares']):
+                # Total engagement (likes + comments + shares)
+                transformed_df['total_engagement'] = transformed_df['likes'] + transformed_df['comments'] + transformed_df['shares']
+                
+                # Engagement ratio (comments + shares) / likes (avoid division by zero)
+                transformed_df['engagement_ratio'] = transformed_df.apply(
+                    lambda row: (row['comments'] + row['shares']) / row['likes'] if row['likes'] > 0 else 0, 
+                    axis=1
+                )
+                
+                logger.info("Successfully created engagement metrics")
+            
+            # 4. Add basic time features
+            logger.info("Adding basic time features...")
+            if 'Posted_date' in transformed_df.columns:
+                try:
+                    # Convert string date back to datetime for processing
+                    temp_datetime = pd.to_datetime(transformed_df['Posted_date'])
+                    
+                    # Extract basic time components
+                    transformed_df['posted_hour'] = temp_datetime.dt.hour
+                    transformed_df['posted_day_of_week'] = temp_datetime.dt.day_name()
+                    transformed_df['posted_month'] = temp_datetime.dt.month_name()
+                    
+                    # Weekend vs weekday
+                    transformed_df['is_weekend'] = temp_datetime.dt.weekday >= 5
+                    
+                    logger.info("Successfully added time features")
+                except Exception as e:
+                    logger.warning(f"Failed to add time features: {e}")
+                    # Set default values
+                    transformed_df['posted_hour'] = 12
+                    transformed_df['posted_day_of_week'] = 'Unknown'
+                    transformed_df['posted_month'] = 'Unknown'
+                    transformed_df['is_weekend'] = False
+            
+            # 5. Create basic categories
+            logger.info("Creating basic categories...")
+            if 'total_engagement' in transformed_df.columns:
+                try:
+                    # Simple engagement level based on quartiles
+                    engagement_quartiles = transformed_df['total_engagement'].quantile([0.25, 0.5, 0.75])
+                    
+                    # Check if we have valid quartiles
+                    if not engagement_quartiles.isna().any():
+                        transformed_df['engagement_level'] = pd.cut(
+                            transformed_df['total_engagement'],
+                            bins=[0, engagement_quartiles[0.25], engagement_quartiles[0.5], 
+                                  engagement_quartiles[0.75], transformed_df['total_engagement'].max()],
+                            labels=['Low', 'Medium', 'High', 'Very High']
+                        )
+                    else:
+                        # Fallback to simple categories
+                        transformed_df['engagement_level'] = pd.cut(
+                            transformed_df['total_engagement'],
+                            bins=4,
+                            labels=['Low', 'Medium', 'High', 'Very High']
+                        )
+                    
+                    logger.info("Successfully created engagement categories")
+                except Exception as e:
+                    logger.warning(f"Failed to create engagement categories: {e}")
+                    # Set default category
+                    transformed_df['engagement_level'] = 'Medium'
+            
+            logger.info(f"Basic transformations completed. Final shape: {transformed_df.shape}")
+            return transformed_df
+            
+        except Exception as e:
+            logger.error(f"Error during basic transformations: {e}")
+            return df
+
     def convert_post_time_to_date_time(self, df: pd.DataFrame, post_time_column: str = 'post_time') -> pd.DataFrame:
         """
         Convert post_time column into separate Posted_date and Posted_time columns.
@@ -54,26 +210,37 @@ class DataTransformer:
                         format='%m/%d/%Y %H:%M',
                         errors='coerce'
                     )
-                except:
-                    transformed_df[temp_datetime_col] = pd.to_datetime(
-                        transformed_df[post_time_column], 
-                        format='%Y-%m-%dT%H:%M:%S',
-                        errors='coerce'
-                    )
+                except Exception as e:
+                    logger.warning(f"Failed to parse with CSV format, trying ISO format: {e}")
+                    try:
+                        transformed_df[temp_datetime_col] = pd.to_datetime(
+                            transformed_df[post_time_column], 
+                            format='%Y-%m-%dT%H:%M:%S',
+                            errors='coerce'
+                        )
+                    except Exception as e2:
+                        logger.warning(f"Failed to parse with ISO format, trying auto-detect: {e2}")
+                        # Try auto-detect format
+                        transformed_df[temp_datetime_col] = pd.to_datetime(
+                            transformed_df[post_time_column], 
+                            errors='coerce'
+                        )
             
-            # Extract date and time components
-            transformed_df['Posted_date'] = transformed_df[temp_datetime_col].dt.date
-            transformed_df['Posted_time'] = transformed_df[temp_datetime_col].dt.time
-            
-            # Convert to string format for better compatibility
-            transformed_df['Posted_date'] = transformed_df['Posted_date'].astype(str)
-            transformed_df['Posted_time'] = transformed_df['Posted_time'].astype(str)
-            
-            # Remove the temporary column
-            transformed_df.drop(columns=[temp_datetime_col], inplace=True)
-            
-            logger.info(f"Successfully converted {post_time_column} to Posted_date and Posted_time columns")
-            logger.debug(f"Sample transformed data: {transformed_df[['Posted_date', 'Posted_time']].head()}")
+            # Check if conversion was successful
+            if temp_datetime_col in transformed_df.columns and not transformed_df[temp_datetime_col].isna().all():
+                # Extract date and time components and convert to string immediately
+                transformed_df['Posted_date'] = transformed_df[temp_datetime_col].dt.strftime('%Y-%m-%d')
+                transformed_df['Posted_time'] = transformed_df[temp_datetime_col].dt.strftime('%H:%M:%S')
+                
+                # Remove the temporary column
+                transformed_df.drop(columns=[temp_datetime_col], inplace=True)
+                
+                logger.info(f"Successfully converted {post_time_column} to Posted_date and Posted_time columns")
+                logger.debug(f"Sample transformed data: {transformed_df[['Posted_date', 'Posted_time']].head()}")
+            else:
+                logger.warning(f"Failed to convert {post_time_column}, keeping original format")
+                if temp_datetime_col in transformed_df.columns:
+                    transformed_df.drop(columns=[temp_datetime_col], inplace=True)
             
             return transformed_df
             

@@ -41,7 +41,7 @@ class SocialMediaDataStore:
 }
 ```
 
-### Schema Validation
+### Schema Validation (Updated)
 ```python
 database_schema = {
     "validator": {
@@ -82,6 +82,14 @@ database_schema = {
                 },
                 "Posted_time": {
                     "bsonType": "string"
+                },
+                "posted_day_of_week": {
+                    "bsonType": "string",
+                    "enum": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday", "Unknown"]
+                },
+                "posted_month": {
+                    "bsonType": "string",
+                    "enum": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December", "Unknown"]
                 }
             }
         }
@@ -403,6 +411,50 @@ def __init__(self):
         'connectTimeoutMS': 10000
     }
 ```
+
+## 🔧 Recent Fixes & Implementation Steps
+
+### MongoDB Schema Validation Fixes
+
+#### Issue: Document Validation Errors
+**Problem**: MongoDB was rejecting documents due to schema validation errors, specifically:
+- `Posted_date` being sent as `datetime.date` objects instead of strings
+- Missing "Unknown" values in enum lists for day_of_week and month fields
+
+**Solution Applied**:
+1. **Date Format Fix**: Updated transformation code to convert dates to strings immediately
+2. **Schema Updates**: Added "Unknown" values to enum lists for better error handling
+3. **Error Handling**: Enhanced error handling for date parsing failures
+
+#### Implementation Steps:
+```python
+# Before (causing validation errors)
+df['Posted_date'] = df[temp_datetime_col].dt.date
+df['Posted_time'] = df[temp_datetime_col].dt.time
+
+# After (fixed)
+df['Posted_date'] = df[temp_datetime_col].dt.strftime('%Y-%m-%d')
+df['Posted_time'] = df[temp_datetime_col].dt.strftime('%H:%M:%S')
+```
+
+### Data Transformation Improvements
+
+#### Enhanced Date Conversion
+- Added multiple format detection (CSV, ISO, auto-detect)
+- Improved error handling with fallback mechanisms
+- Better logging for debugging transformation issues
+
+#### Schema Validation Updates
+- Added "Unknown" values to enum lists for day_of_week and month fields
+- Enhanced validation to handle edge cases gracefully
+- Improved error messages for validation failures
+
+### Connection Management Improvements
+
+#### Better Error Handling
+- Enhanced connection error messages
+- Improved retry logic for connection failures
+- Better logging for debugging connection issues
 
 ## 🚨 Error Handling
 

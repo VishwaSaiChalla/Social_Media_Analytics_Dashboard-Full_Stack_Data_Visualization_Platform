@@ -3,7 +3,6 @@ import requests
 import pandas as pd
 import plotly.express as px
 import time
-import json
 from datetime import datetime
 import logging
 import os
@@ -583,20 +582,32 @@ class DashboardApp:
         with col4:
             self.create_donut_chart(sentiment_data, 'Instagram', '📷 Instagram Sentiment')
     
-    def create_average_likes_line_chart(self, likes_data):
-        """Create a line chart for average likes by date and platform"""
-        if not likes_data:
-            st.warning("⚠️ No average likes data available")
+    def create_line_chart(self, data, metric_name, title, y_label):
+        """Generic method to create line charts for engagement metrics"""
+        if not data:
+            st.warning(f"⚠️ No {metric_name} data available")
             return
         
         try:
+            # Map metric names to backend field names
+            metric_mapping = {
+                'Average Likes': 'avg_likes',
+                'Average Comments': 'avg_comments', 
+                'Average Shares': 'avg_shares'
+            }
+            
+            backend_field = metric_mapping.get(metric_name)
+            if not backend_field:
+                st.error(f"❌ Unknown metric: {metric_name}")
+                return
+            
             # Convert to DataFrame for easier manipulation
             chart_data = []
-            for item in likes_data:
+            for item in data:
                 chart_data.append({
                     'Date': item['_id']['date'],
                     'Platform': item['_id']['platform'],
-                    'Average Likes': round(item['avg_likes'], 2),
+                    metric_name: round(item[backend_field], 2),
                     'Total Posts': item['total_posts']
                 })
             
@@ -610,16 +621,16 @@ class DashboardApp:
             fig = px.line(
                 df,
                 x='Date',
-                y='Average Likes',
+                y=metric_name,
                 color='Platform',
-                title='📈 Average Likes Count by Date and Platform',
+                title=title,
                 markers=True,  # Add markers to the lines
                 line_shape='linear'
             )
             
             fig.update_layout(
                 xaxis_title="Date",
-                yaxis_title="Average Likes Count",
+                yaxis_title=y_label,
                 legend_title="Platform",
                 height=500,
                 showlegend=True,
@@ -636,117 +647,19 @@ class DashboardApp:
             st.plotly_chart(fig, use_container_width=True)
             
         except Exception as e:
-            st.error(f"❌ Error creating average likes line chart: {str(e)}")
+            st.error(f"❌ Error creating {metric_name} line chart: {str(e)}")
+
+    def create_average_likes_line_chart(self, likes_data):
+        """Create a line chart for average likes by date and platform"""
+        self.create_line_chart(likes_data, 'Average Likes', '📈 Average Likes Count by Date and Platform', 'Average Likes Count')
 
     def create_average_comments_line_chart(self, comments_data):
         """Create a line chart for average comments by date and platform"""
-        if not comments_data:
-            st.warning("⚠️ No average comments data available")
-            return
-        
-        try:
-            # Convert to DataFrame for easier manipulation
-            chart_data = []
-            for item in comments_data:
-                chart_data.append({
-                    'Date': item['_id']['date'],
-                    'Platform': item['_id']['platform'],
-                    'Average Comments': round(item['avg_comments'], 2),
-                    'Total Posts': item['total_posts']
-                })
-            
-            df = pd.DataFrame(chart_data)
-            
-            # Convert date strings to datetime for proper sorting
-            df['Date'] = pd.to_datetime(df['Date'])
-            df = df.sort_values('Date')
-            
-            # Create the line chart
-            fig = px.line(
-                df,
-                x='Date',
-                y='Average Comments',
-                color='Platform',
-                title='💬 Average Comments Count by Date and Platform',
-                markers=True,  # Add markers to the lines
-                line_shape='linear'
-            )
-            
-            fig.update_layout(
-                xaxis_title="Date",
-                yaxis_title="Average Comments Count",
-                legend_title="Platform",
-                height=500,
-                showlegend=True,
-                hovermode='x unified'
-            )
-            
-            # Customize colors for each platform
-            fig.update_traces(
-                line=dict(width=3),
-                marker=dict(size=6)
-            )
-            
-            # Display the chart
-            st.plotly_chart(fig, use_container_width=True)
-            
-        except Exception as e:
-            st.error(f"❌ Error creating average comments line chart: {str(e)}")
+        self.create_line_chart(comments_data, 'Average Comments', '💬 Average Comments Count by Date and Platform', 'Average Comments Count')
 
     def create_average_shares_line_chart(self, shares_data):
         """Create a line chart for average shares by date and platform"""
-        if not shares_data:
-            st.warning("⚠️ No average shares data available")
-            return
-        
-        try:
-            # Convert to DataFrame for easier manipulation
-            chart_data = []
-            for item in shares_data:
-                chart_data.append({
-                    'Date': item['_id']['date'],
-                    'Platform': item['_id']['platform'],
-                    'Average Shares': round(item['avg_shares'], 2),
-                    'Total Posts': item['total_posts']
-                })
-            
-            df = pd.DataFrame(chart_data)
-            
-            # Convert date strings to datetime for proper sorting
-            df['Date'] = pd.to_datetime(df['Date'])
-            df = df.sort_values('Date')
-            
-            # Create the line chart
-            fig = px.line(
-                df,
-                x='Date',
-                y='Average Shares',
-                color='Platform',
-                title='📤 Average Shares Count by Date and Platform',
-                markers=True,  # Add markers to the lines
-                line_shape='linear'
-            )
-            
-            fig.update_layout(
-                xaxis_title="Date",
-                yaxis_title="Average Shares Count",
-                legend_title="Platform",
-                height=500,
-                showlegend=True,
-                hovermode='x unified'
-            )
-            
-            # Customize colors for each platform
-            fig.update_traces(
-                line=dict(width=3),
-                marker=dict(size=6)
-            )
-            
-            # Display the chart
-            st.plotly_chart(fig, use_container_width=True)
-            
-        except Exception as e:
-            st.error(f"❌ Error creating average shares line chart: {str(e)}")
+        self.create_line_chart(shares_data, 'Average Shares', '📤 Average Shares Count by Date and Platform', 'Average Shares Count')
 
     def create_shares_by_post_type_clustered_chart(self, shares_data):
         """Create a clustered bar chart for shares by post type"""

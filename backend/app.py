@@ -4,14 +4,15 @@ import logging
 import os
 import sys
 from apscheduler.schedulers.background import BackgroundScheduler
-import threading
 import time
+import pandas as pd
 
 # Add the backend directory to the path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from data_store import SocialMediaDataStore
 from data_ingest import mock_data_generator, insert_data_to_mongodb
+from transformation import DataTransformer
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -178,35 +179,48 @@ class BackendApp:
                 self.scheduler = BackgroundScheduler()
                 
                 def insert_mock_data():
-                    """Insert mock data every 2 minutes"""
+                    """Insert mock data every 30 seconds"""
                     try:
                         # Generate 5-15 new records each time
                         import random
                         num_records = random.randint(5, 15)
-                        df = mock_data_generator(num_records, data_store=self.data_store)
+                        logger.info(f"Scheduler: Generating {num_records} new mock records...")
                         
-                        if insert_data_to_mongodb(self.data_store, df):
-                            logger.info(f"Scheduled update: Added {num_records} new records")
-                        else:
-                            logger.error("Failed to insert scheduled data")
+                        # Generate mock data with better error handling
+                        try:
+                            df = mock_data_generator(num_records, data_store=self.data_store)
+                            logger.info(f"Scheduler: Successfully generated {len(df)} mock records")
+                        except Exception as gen_error:
+                            logger.error(f"Scheduler: Failed to generate mock data: {gen_error}")
+                            return
+                        
+                        # Insert data with better error handling
+                        try:
+                            if insert_data_to_mongodb(self.data_store, df):
+                                logger.info(f"Scheduled update: Added {num_records} new records")
+                            else:
+                                logger.error("Failed to insert scheduled data")
+                        except Exception as insert_error:
+                            logger.error(f"Scheduler: Failed to insert data: {insert_error}")
                             
                     except Exception as e:
                         logger.error(f"Error in scheduled insertion: {e}")
+                        logger.exception("Scheduler full traceback:")
                 
-                # Schedule the job to run every 2 minutes
+                # Schedule the job to run every 30 seconds
                 self.scheduler.add_job(
                     insert_mock_data,
                     'interval',
-                    minutes=2,
+                    seconds=30,
                     id='mock_data_insertion'
                 )
                 
                 self.scheduler.start()
-                logger.info("Scheduler started - mock data will be inserted every 2 minutes")
+                logger.info("Scheduler started - mock data will be inserted every 30 seconds")
                 
                 return jsonify({
                     'success': True,
-                    'message': 'Scheduler started successfully. Mock data will be inserted every 2 minutes.'
+                    'message': 'Scheduler started successfully. Mock data will be inserted every 30 seconds.'
                 })
                 
             except Exception as e:
@@ -387,7 +401,6 @@ class BackendApp:
             except Exception as e:
                 logger.error(f"Error getting decomposition tree data: {e}")
                 return jsonify({'error': str(e)}), 500
-        
 
     
     def run(self, host='0.0.0.0', port=5000, debug=False):
