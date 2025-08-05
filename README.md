@@ -118,6 +118,46 @@ A comprehensive social media analytics platform that provides real-time insights
    - API: http://localhost:5000
    - MongoDB: localhost:27017
 
+### Troubleshooting Common Issues
+
+#### MongoDB Connection Issues
+If you encounter "Failed to initialize database. Please check MongoDB connection":
+
+1. **Start MongoDB with Docker** (Recommended):
+   ```bash
+   docker-compose up -d datastore
+   ```
+
+2. **Check MongoDB Status**:
+   ```bash
+   docker-compose ps
+   docker-compose logs datastore
+   ```
+
+3. **Restart Backend**:
+   ```bash
+   docker-compose restart backend
+   ```
+
+#### Scheduler Data Ingestion Issues
+If the scheduler fails to ingest data:
+
+1. **Check Backend Logs**:
+   ```bash
+   docker-compose logs backend --tail=50
+   ```
+
+2. **Restart Services**:
+   ```bash
+   docker-compose restart
+   ```
+
+3. **Test API Endpoints**:
+   ```bash
+   curl -X POST http://localhost:5000/api/start-scheduler
+   curl http://localhost:5000/health
+   ```
+
 ### Alternative Docker Commands
 
 ```bash
@@ -283,6 +323,26 @@ For issues and questions:
 2. Review the API endpoints
 3. Check MongoDB connection
 4. Verify data ingestion status
+
+## 🔧 Recent Fixes & Improvements
+
+### MongoDB Schema Validation Fixes
+- **Date Format Consistency**: Fixed date conversion issues in transformation pipeline
+- **Schema Validation**: Updated MongoDB schema to handle "Unknown" values
+- **Error Handling**: Enhanced error handling for date parsing failures
+- **Data Type Validation**: Ensured proper string format for Posted_date and Posted_time fields
+
+### Scheduler Data Ingestion Fixes
+- **Date Format Standardization**: Changed mock data generator to use CSV format (`%m/%d/%Y %H:%M`)
+- **Enhanced Error Handling**: Added comprehensive error handling in scheduler functions
+- **Better Logging**: Improved logging for debugging scheduler issues
+- **Data Transformation**: Fixed date conversion pipeline for mock data
+
+### API Endpoint Improvements
+- **Health Check Enhancement**: Better database connection validation
+- **Error Response**: More detailed error messages for troubleshooting
+- **Scheduler Management**: Improved start/stop scheduler functionality
+- **Data Validation**: Enhanced validation before database insertion
 
 ## 🔮 Future Enhancements
 

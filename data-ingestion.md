@@ -14,6 +14,12 @@ This document describes the comprehensive data ingestion system implemented in t
 - **Automatic Trigger**: On backend startup if database is empty
 - **Manual Trigger**: Via `/api/ingest-csv` endpoint
 
+#### Recent Fixes Applied
+- **Date Format Consistency**: Fixed date conversion to ensure proper string format for MongoDB schema
+- **Schema Validation**: Updated schema to handle "Unknown" values in day_of_week and month fields
+- **Error Handling**: Enhanced error handling for date parsing failures with fallback mechanisms
+- **Data Transformation**: Improved transformation pipeline to handle edge cases gracefully
+
 #### CSV Data Structure
 ```csv
 platform,post_type,sentiment_score,likes,comments,shares,post_time
@@ -47,9 +53,16 @@ POST /api/ingest-csv
 
 #### Background Scheduler
 - **Framework**: APScheduler
-- **Frequency**: Every 2 minutes
-- **Records per batch**: 10 records
+- **Frequency**: Every 30 seconds (updated from 2 minutes)
+- **Records per batch**: 5-15 records (randomized)
 - **Realistic Patterns**: Platform-specific engagement patterns
+
+#### Recent Fixes Applied
+- **Date Format Standardization**: Changed mock data generator to use CSV format (`%m/%d/%Y %H:%M`) for consistency
+- **Enhanced Error Handling**: Added comprehensive try-catch blocks in scheduler functions
+- **Better Logging**: Improved logging for debugging scheduler issues with detailed error messages
+- **Data Transformation**: Fixed date conversion pipeline to handle mock data properly
+- **Scheduler Management**: Improved start/stop scheduler functionality with better error handling
 
 #### Mock Data Characteristics
 - **Platforms**: Facebook, Twitter, LinkedIn, Instagram
@@ -84,7 +97,7 @@ The system includes a sophisticated data transformation pipeline that converts `
 - **CSV Format**: `MM/DD/YYYY HH:MM` (e.g., "8/17/2023 14:45")
 - **ISO Format**: `YYYY-MM-DDTHH:MM:SS` (e.g., "2023-08-17T14:45:00")
 
-#### Transformation Code
+#### Transformation Code (Updated)
 ```python
 def convert_post_time_to_date_time(self, df: pd.DataFrame, post_time_column: str = 'post_time') -> pd.DataFrame:
     """
@@ -100,26 +113,43 @@ def convert_post_time_to_date_time(self, df: pd.DataFrame, post_time_column: str
     # Create temporary datetime column
     temp_datetime_col = f"temp_{post_time_column}"
     
-    # Try CSV format first, then ISO format
+    # Try CSV format first, then ISO format with better error handling
     try:
         df[temp_datetime_col] = pd.to_datetime(
             df[post_time_column], 
             format='%m/%d/%Y %H:%M',
             errors='coerce'
         )
-    except:
-        df[temp_datetime_col] = pd.to_datetime(
-            df[post_time_column], 
-            format='%Y-%m-%dT%H:%M:%S',
-            errors='coerce'
-        )
+    except Exception as e:
+        logger.warning(f"Failed to parse with CSV format, trying ISO format: {e}")
+        try:
+            df[temp_datetime_col] = pd.to_datetime(
+                df[post_time_column], 
+                format='%Y-%m-%dT%H:%M:%S',
+                errors='coerce'
+            )
+        except Exception as e2:
+            logger.warning(f"Failed to parse with ISO format, trying auto-detect: {e2}")
+            # Try auto-detect format
+            df[temp_datetime_col] = pd.to_datetime(
+                df[post_time_column], 
+                errors='coerce'
+            )
     
-    # Extract date and time components
-    df['Posted_date'] = df[temp_datetime_col].dt.date.astype(str)
-    df['Posted_time'] = df[temp_datetime_col].dt.time.astype(str)
-    
-    # Clean up temporary column
-    df.drop(columns=[temp_datetime_col], inplace=True)
+    # Check if conversion was successful and convert to string immediately
+    if temp_datetime_col in df.columns and not df[temp_datetime_col].isna().all():
+        # Extract date and time components and convert to string immediately
+        df['Posted_date'] = df[temp_datetime_col].dt.strftime('%Y-%m-%d')
+        df['Posted_time'] = df[temp_datetime_col].dt.strftime('%H:%M:%S')
+        
+        # Remove the temporary column
+        df.drop(columns=[temp_datetime_col], inplace=True)
+        
+        logger.info(f"Successfully converted {post_time_column} to Posted_date and Posted_time columns")
+    else:
+        logger.warning(f"Failed to convert {post_time_column}, keeping original format")
+        if temp_datetime_col in df.columns:
+            df.drop(columns=[temp_datetime_col], inplace=True)
     
     return df
 ```
@@ -258,6 +288,55 @@ Mock Data Generator → DataTransformer → Schema Validation → MongoDB
     ↓
 Frontend Dashboard ← API Endpoints ← MongoDB Aggregation
 ```
+
+## 🔧 Recent Fixes & Implementation Steps
+
+### MongoDB Schema Validation Fixes
+
+#### Issue: Date Format Validation Errors
+**Problem**: MongoDB schema validation was failing because `Posted_date` was being sent as `datetime.date` objects instead of strings.
+
+**Solution Applied**:
+1. **Updated Transformation Code**: Changed date conversion to use `strftime()` instead of `.dt.date`
+2. **Schema Updates**: Added "Unknown" values to enum lists for day_of_week and month fields
+3. **Error Handling**: Enhanced error handling for date parsing failures
+
+#### Implementation Steps:
+```python
+# Before (causing validation errors)
+df['Posted_date'] = df[temp_datetime_col].dt.date
+df['Posted_time'] = df[temp_datetime_col].dt.time
+
+# After (fixed)
+df['Posted_date'] = df[temp_datetime_col].dt.strftime('%Y-%m-%d')
+df['Posted_time'] = df[temp_datetime_col].dt.strftime('%H:%M:%S')
+```
+
+### Scheduler Data Ingestion Fixes
+
+#### Issue: Scheduler Failing to Generate Mock Data
+**Problem**: Mock data generator was using ISO format dates but transformation expected CSV format.
+
+**Solution Applied**:
+1. **Date Format Standardization**: Changed mock data generator to use CSV format
+2. **Enhanced Error Handling**: Added comprehensive try-catch blocks
+3. **Better Logging**: Improved logging for debugging scheduler issues
+
+#### Implementation Steps:
+```python
+# Before (inconsistent format)
+"post_time": post_time.isoformat()
+
+# After (consistent format)
+"post_time": post_time.strftime('%m/%d/%Y %H:%M')
+```
+
+### API Endpoint Improvements
+
+#### Enhanced Error Handling
+- Added detailed error messages for troubleshooting
+- Improved scheduler start/stop functionality
+- Better health check validation
 
 ## 🛠️ Troubleshooting
 
