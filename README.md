@@ -177,6 +177,155 @@ docker-compose up --build -d
 docker-compose ps
 ```
 
+## ☁️ AWS Cloud Deployment
+
+### Prerequisites
+- AWS Account with EC2 access
+- SSH key pair for EC2 instance
+- Git repository with your project
+
+### EC2 Instance Setup
+
+1. **Create EC2 Instance**
+   - **Instance Type**: t2.micro (free tier eligible)
+   - **Operating System**: Amazon Linux Base (AMI)
+   - **Storage**: 8 GiB
+   - **Security Group**: Configure with ports 80, 8501, 5000
+
+2. **Security Group Configuration**
+   ```
+   Port 80: HTTP
+   Port 8501: Streamlit Dashboard
+   Port 5000: Flask API
+   Port 22: SSH (default)
+   ```
+
+### Deployment Steps
+
+1. **Connect to EC2 Instance**
+   ```bash
+   ssh -i /path/to/your-key.pem ec2-user@<your-ec2-public-ip>
+   ```
+
+2. **Update System Packages**
+   ```bash
+   sudo dnf update -y
+   ```
+
+3. **Install Docker**
+   ```bash
+   # Install Docker Engine
+   sudo dnf install docker -y
+   
+   # Start Docker service
+   sudo systemctl start docker
+   
+   # Enable Docker on boot
+   sudo systemctl enable docker
+   
+   # Add user to docker group
+   sudo usermod -aG docker ec2-user
+   ```
+
+4. **Install Git and Clone Repository**
+   ```bash
+   # Install Git
+   sudo dnf install git -y
+   
+   # Clone your repository
+   git clone https://github.com/VishwaSaiChalla/Technology_Intern_Take_Home_Submission.git
+   
+   # Navigate to project directory
+   cd Technology_Intern_Take_Home_Submission
+   ```
+
+5. **Install Docker Compose**
+   ```bash
+   # Download Docker Compose binary
+   sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.7/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+   
+   # Make it executable
+   sudo chmod +x /usr/local/bin/docker-compose
+   ```
+
+6. **Deploy Application**
+   ```bash
+   # Start all services
+   docker-compose up -d
+   
+   # Check application status
+   docker-compose ps
+   
+   # View logs
+   docker-compose logs -f
+   ```
+
+7. **Test Application Health**
+   ```bash
+   # Test API health
+   curl http://localhost:5000/health
+   
+   # Test dashboard access
+   curl http://localhost:8501
+   ```
+
+### Elastic IP Configuration
+
+1. **Allocate Elastic IP**
+   - Navigate to AWS Console → EC2 → Elastic IPs
+   - Click "Allocate Elastic IP address"
+   - Select your region
+
+2. **Associate with EC2 Instance**
+   - Select the allocated Elastic IP
+   - Click "Associate Elastic IP address"
+   - Choose your running EC2 instance
+   - Select the private IP to associate
+
+3. **Update Security Groups**
+   - Ensure your security group allows inbound traffic on required ports
+   - Update any DNS records if applicable
+
+### Access Your Application
+
+- **Dashboard**: `http://<your-elastic-ip>:8501/`
+- **API**: `http://<your-elastic-ip>:5000/`
+- **Health Check**: `http://<your-elastic-ip>:5000/health`
+
+### Production Considerations
+
+- **Load Balancer**: Consider using Application Load Balancer for high availability
+- **Auto Scaling**: Set up auto scaling groups for traffic spikes
+- **Monitoring**: Enable CloudWatch monitoring
+- **Backup**: Regular EBS snapshots for data persistence
+- **SSL/TLS**: Configure HTTPS for secure access
+- **Domain**: Point a custom domain to your Elastic IP
+
+### Troubleshooting AWS Deployment
+
+1. **Connection Issues**
+   ```bash
+   # Check if Docker is running
+   sudo systemctl status docker
+   
+   # Check container status
+   docker-compose ps
+   
+   # View detailed logs
+   docker-compose logs backend
+   docker-compose logs frontend
+   ```
+
+2. **Port Access Issues**
+   - Verify security group rules
+   - Check if application is listening on correct ports
+   - Test local access: `curl http://localhost:8501`
+
+3. **Resource Issues**
+   - Monitor CPU and memory usage
+   - Consider upgrading instance type if needed
+   - Check EBS volume space
+
 ## 📊 Data Structure
 
 ### Database Schema
