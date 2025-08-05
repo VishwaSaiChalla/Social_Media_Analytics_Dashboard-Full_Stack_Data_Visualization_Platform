@@ -4,7 +4,6 @@ import logging
 import os
 import sys
 from apscheduler.schedulers.background import BackgroundScheduler
-import threading
 import time
 
 # Add the backend directory to the path

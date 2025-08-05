@@ -1,5 +1,4 @@
 from pymongo import MongoClient
-import json
 import pandas as pd
 import logging
 from typing import Dict, List, Optional, Any
@@ -150,127 +149,9 @@ class SocialMediaDataStore:
             logger.error(f"Failed to create collection: {e}")
             return False
     
-    def delete_collection(self) -> bool:
-        """
-        Delete the collection from the database.
-        
-        Returns:
-            bool: True if deletion successful
-        """
-        logger.warning("Attempting to delete collection 'social_media_posts'")
-        try:
-            if self.db is None:
-                logger.error("Database not connected. Call connect() first.")
-                return False
-                
-            self.db.drop_collection('social_media_posts')
-            logger.info("Collection 'social_media_posts' deleted successfully")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to delete collection: {e}")
-            return False
+
     
-    def delete_specific_post(self, post_id: int) -> bool:
-        """
-        Delete a specific post from the collection.
-        
-        Args:
-            post_id: ID of the post to delete
-            
-        Returns:
-            bool: True if deletion successful
-        """
-        logger.info(f"Attempting to delete post with ID: {post_id}")
-        try:
-            if self.collection is None:
-                logger.error("Database not connected. Call connect() first.")
-                return False
-                
-            result = self.collection.delete_one({"post_id": post_id})
-            if result.deleted_count > 0:
-                logger.info(f"Post with ID {post_id} deleted successfully")
-            else:
-                logger.warning(f"No post found with ID {post_id} to delete")
-            return result.deleted_count > 0
-        except Exception as e:
-            logger.error(f"Failed to delete post {post_id}: {e}")
-            return False
-    
-    def update_post(self, post_id: int, update_data: Dict) -> bool:
-        """
-        Update a specific post in the collection.
-        
-        Args:
-            post_id: ID of the post to update
-            update_data: Data to update
-            
-        Returns:
-            bool: True if update successful
-        """
-        logger.info(f"Attempting to update post with ID: {post_id}")
-        logger.debug(f"Update data: {update_data}")
-        try:
-            if self.collection is None:
-                logger.error("Database not connected. Call connect() first.")
-                return False
-                
-            result = self.collection.update_one({"post_id": post_id}, {"$set": update_data})
-            if result.modified_count > 0:
-                logger.info(f"Post with ID {post_id} updated successfully")
-            else:
-                logger.warning(f"No post found with ID {post_id} to update")
-            return result.modified_count > 0
-        except Exception as e:
-            logger.error(f"Failed to update post {post_id}: {e}")
-            return False
-    
-    def read_specific_post(self, post_id: int) -> Optional[Dict]:
-        """
-        Read a specific post from the collection.
-        
-        Args:
-            post_id: ID of the post to read
-            
-        Returns:
-            Dict or None: Post data if found, None otherwise
-        """
-        logger.info(f"Attempting to read post with ID: {post_id}")
-        try:
-            if self.collection is None:
-                logger.error("Database not connected. Call connect() first.")
-                return None
-                
-            post = self.collection.find_one({"post_id": post_id})
-            if post:
-                logger.info(f"Successfully retrieved post with ID {post_id}")
-                logger.debug(f"Post data: {post}")
-            else:
-                logger.warning(f"No post found with ID {post_id}")
-            return post if post else None
-        except Exception as e:
-            logger.error(f"Failed to read post {post_id}: {e}")
-            return None
-    
-    def read_all_posts(self) -> List[Dict]:
-        """
-        Read all posts from the collection.
-        
-        Returns:
-            List[Dict]: All posts in the collection
-        """
-        logger.info("Attempting to read all posts from collection")
-        try:
-            if self.collection is None:
-                logger.error("Database not connected. Call connect() first.")
-                return []
-                
-            posts = list(self.collection.find())
-            logger.info(f"Successfully retrieved {len(posts)} posts from collection")
-            logger.debug(f"First few posts: {posts[:3] if posts else 'No posts found'}")
-            return posts
-        except Exception as e:
-            logger.error(f"Failed to read posts: {e}")
-            return []
+
     
     def insert_data(self, data: List[Dict[str, Any]]) -> bool:
         """
@@ -618,14 +499,17 @@ class SocialMediaDataStore:
             logger.error(f"Failed to get sentiment by post type: {e}")
             return []
 
-    def get_average_likes_by_date_platform(self) -> List[Dict]:
+    def get_average_metric_by_date_platform(self, metric: str) -> List[Dict]:
         """
-        Get average likes count by date and platform.
+        Generic method to get average metric count by date and platform.
         
+        Args:
+            metric: The metric to aggregate (likes, comments, shares)
+            
         Returns:
-            List[Dict]: Average likes data grouped by date and platform
+            List[Dict]: Average metric data grouped by date and platform
         """
-        logger.info("Attempting to get average likes by date and platform")
+        logger.info(f"Attempting to get average {metric} by date and platform")
         try:
             if self.collection is None:
                 logger.error("Database not connected. Call connect() first.")
@@ -637,82 +521,30 @@ class SocialMediaDataStore:
                         'date': '$Posted_date',
                         'platform': '$platform'
                     },
-                    'avg_likes': {'$avg': '$likes'},
+                    f'avg_{metric}': {'$avg': f'${metric}'},
                     'total_posts': {'$sum': 1}
                 }},
                 {'$sort': {'_id.date': 1, '_id.platform': 1}}
             ]
             
             results = list(self.collection.aggregate(pipeline))
-            logger.info(f"Successfully retrieved average likes by date and platform: {len(results)} records")
+            logger.info(f"Successfully retrieved average {metric} by date and platform: {len(results)} records")
             return results
         except Exception as e:
-            logger.error(f"Failed to get average likes by date and platform: {e}")
+            logger.error(f"Failed to get average {metric} by date and platform: {e}")
             return []
+
+    def get_average_likes_by_date_platform(self) -> List[Dict]:
+        """Get average likes count by date and platform."""
+        return self.get_average_metric_by_date_platform('likes')
 
     def get_average_comments_by_date_platform(self) -> List[Dict]:
-        """
-        Get average comments count by date and platform.
-        
-        Returns:
-            List[Dict]: Average comments data grouped by date and platform
-        """
-        logger.info("Attempting to get average comments by date and platform")
-        try:
-            if self.collection is None:
-                logger.error("Database not connected. Call connect() first.")
-                return []
-                
-            pipeline = [
-                {'$group': {
-                    '_id': {
-                        'date': '$Posted_date',
-                        'platform': '$platform'
-                    },
-                    'avg_comments': {'$avg': '$comments'},
-                    'total_posts': {'$sum': 1}
-                }},
-                {'$sort': {'_id.date': 1, '_id.platform': 1}}
-            ]
-            
-            results = list(self.collection.aggregate(pipeline))
-            logger.info(f"Successfully retrieved average comments by date and platform: {len(results)} records")
-            return results
-        except Exception as e:
-            logger.error(f"Failed to get average comments by date and platform: {e}")
-            return []
+        """Get average comments count by date and platform."""
+        return self.get_average_metric_by_date_platform('comments')
 
     def get_average_shares_by_date_platform(self) -> List[Dict]:
-        """
-        Get average shares count by date and platform.
-        
-        Returns:
-            List[Dict]: Average shares data grouped by date and platform
-        """
-        logger.info("Attempting to get average shares by date and platform")
-        try:
-            if self.collection is None:
-                logger.error("Database not connected. Call connect() first.")
-                return []
-                
-            pipeline = [
-                {'$group': {
-                    '_id': {
-                        'date': '$Posted_date',
-                        'platform': '$platform'
-                    },
-                    'avg_shares': {'$avg': '$shares'},
-                    'total_posts': {'$sum': 1}
-                }},
-                {'$sort': {'_id.date': 1, '_id.platform': 1}}
-            ]
-            
-            results = list(self.collection.aggregate(pipeline))
-            logger.info(f"Successfully retrieved average shares by date and platform: {len(results)} records")
-            return results
-        except Exception as e:
-            logger.error(f"Failed to get average shares by date and platform: {e}")
-            return []
+        """Get average shares count by date and platform."""
+        return self.get_average_metric_by_date_platform('shares')
 
     def get_shares_by_post_type(self) -> List[Dict]:
         """
@@ -804,88 +636,9 @@ class SocialMediaDataStore:
     
 
     
-    def get_trends(self) -> List[Dict]:
-        """
-        Get time-based trends from the collection.
-        
-        Returns:
-            List[Dict]: Trend data grouped by date and platform
-        """
-        logger.info("Attempting to retrieve time-based trends from collection")
-        try:
-            if self.collection is None:
-                logger.error("Database not connected. Call connect() first.")
-                return []
-                
-            pipeline = [
-                {'$group': {
-                    '_id': {
-                        'date': '$Posted_date',
-                        'platform': '$platform'
-                    },
-                    'avg_likes': {'$avg': '$likes'},
-                    'avg_comments': {'$avg': '$comments'},
-                    'avg_shares': {'$avg': '$shares'},
-                    'count': {'$sum': 1}
-                }},
-                {'$sort': {'_id.date': 1}}
-            ]
-            
-            logger.debug("Executing aggregation pipeline for trends")
-            trends = list(self.collection.aggregate(pipeline))
-            logger.info(f"Successfully retrieved {len(trends)} trend records")
-            logger.debug(f"Sample trends: {trends[:3] if trends else 'No trends found'}")
-            return trends
-        except Exception as e:
-            logger.error(f"Failed to get trends: {e}")
-            return []
+
     
-    def aggregate(self, pipeline: List[Dict]) -> List[Dict]:
-        """
-        Execute an aggregation pipeline on the collection.
-        
-        Args:
-            pipeline: MongoDB aggregation pipeline
-            
-        Returns:
-            List[Dict]: Aggregation results
-        """
-        logger.info(f"Executing aggregation pipeline with {len(pipeline)} stages")
-        try:
-            if self.collection is None:
-                logger.error("Database not connected. Call connect() first.")
-                return []
-                
-            results = list(self.collection.aggregate(pipeline))
-            logger.info(f"Successfully executed aggregation pipeline, returned {len(results)} results")
-            return results
-        except Exception as e:
-            logger.error(f"Failed to execute aggregation pipeline: {e}")
-            return []
-    
-    def find_by_platform(self, platform: str) -> List[Dict]:
-        """
-        Find all posts for a specific platform.
-        
-        Args:
-            platform: Platform name to filter by
-            
-        Returns:
-            List[Dict]: Posts for the specified platform
-        """
-        logger.info(f"Attempting to find posts for platform: {platform}")
-        try:
-            if self.collection is None:
-                logger.error("Database not connected. Call connect() first.")
-                return []
-                
-            posts = list(self.collection.find({'platform': platform}, {'_id': 0}))
-            logger.info(f"Successfully retrieved {len(posts)} posts for platform {platform}")
-            logger.debug(f"Sample posts for {platform}: {posts[:2] if posts else 'No posts found'}")
-            return posts
-        except Exception as e:
-            logger.error(f"Failed to find posts by platform {platform}: {e}")
-            return []
+
     
     def __enter__(self):
         """Context manager entry"""
@@ -926,9 +679,9 @@ if __name__ == "__main__":
         stats = data_store.get_stats()
         print("Statistics:", stats)
         
-        # Get trends
-        logger.info("Retrieving trends...")
-        trends = data_store.get_trends()
-        print("Trends:", trends[:5])  # Show first 5 trends
+        # Get statistics
+        logger.info("Retrieving statistics...")
+        stats = data_store.get_stats()
+        print("Statistics:", stats)
     
     logger.info("SocialMediaDataStore example usage completed")
