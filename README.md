@@ -493,6 +493,165 @@ For issues and questions:
 - **Scheduler Management**: Improved start/stop scheduler functionality
 - **Data Validation**: Enhanced validation before database insertion
 
+## 🚀 Complete Development Journey & Implementation Steps
+
+### Phase 1: Data Infrastructure & Database Setup
+
+#### Dataset Selection & Initial Setup:
+- **Source**: Selected Social_Media_Engagement.csv dataset from Kaggle
+- **Database Choice**: MongoDB for flexibility with JSON-like documents
+- **Schema Design**: Created comprehensive schema file for data validation
+- **Connection**: Implemented PyMongo with MongoClient for database connectivity
+
+#### Data Ingestion Implementation:
+1. **CRUD Operations**: Implemented basic Create, Read, Update, Delete operations
+2. **Testing**: Verified correct data insertion into database
+3. **CSV Ingestion**: Developed `ingest_from_csv` method for CSV file loading
+4. **Mock Data Generation**: Created method to generate random values for likes, comments, shares
+5. **Scheduled Ingestion**: Implemented 30-second automated data ingestion
+6. **Validation**: Ensured all incoming data adhered to schema validation rules
+
+### Phase 2: Visualization & Frontend Development
+
+#### Technology Stack Evolution:
+- **Initial Approach**: Simple main functions with kernel testing
+- **Advanced Integration**: REST API development skills integration
+- **Modular Architecture**: Separated frontend and backend components
+- **Frontend Choice**: Power BI dashboards for effective visualization
+
+#### Power BI Implementation Process:
+
+##### Database Connection Strategy:
+1. **Challenge**: Power BI lacks native MongoDB connector
+2. **Research**: Extensive investigation for viable solutions
+3. **Solution**: BI Connector extension with ODBC connector
+4. **Configuration**: MongoDB client connection through ODBC driver
+5. **Advantage**: Real-time data refresh vs. static CSV approach
+
+##### ETL Process Implementation:
+1. **Data Cleaning**: Removed duplicates and standardized formats
+2. **Field Renaming**: Enhanced clarity for better visualization
+3. **Date/Time Splitting**: Separated fields for granular analysis
+4. **Data Dictionary**: Comprehensive field documentation and context
+
+##### Dashboard Architecture:
+**Modular Design Approach**:
+1. **Engagement Analysis Module**:
+   - KPI metrics and performance indicators
+   - Clustered bar charts for platform engagement
+   - Day-of-week engagement patterns
+   - Temporal trend analysis with date hierarchies
+   - Heatmaps for pattern visualization
+
+2. **Sentiment Analysis Module**:
+   - Donut charts for platform-specific sentiment distribution
+   - Bar charts for post-type sentiment analysis
+   - Line charts for engagement trends by platform
+   - Sentiment correlation analysis
+
+3. **Content Performance Module**:
+   - Bar charts for content type performance
+   - Tree-maps for platform hierarchy visualization
+   - Content effectiveness metrics
+   - Performance benchmarking
+
+##### DAX Measures Implementation:
+- **Dynamic Platform Counts**: Platform-specific aggregation logic
+- **Intelligent Metrics**: Business logic-driven calculations
+- **Contextual Measures**: Time-based and categorical analysis
+- **Performance Indicators**: Engagement ratios and growth metrics
+
+### Phase 3: Frontend Integration & Real-time Features
+
+#### Streamlit Integration:
+- **Technology**: Plotly for interactive visualizations
+- **Layout Design**: Automatic database initialization at startup
+- **API Integration**: Multiple endpoints for data verification and loading
+- **Real-time Updates**: 30-second automatic page refresh
+
+#### Scheduler Implementation:
+- **Technology**: Python APScheduler for automated data insertion
+- **Frequency**: 30-second intervals for mock data generation
+- **User Control**: Manual trigger buttons for data insertion
+- **Live Updates**: Real-time visualization updates
+
+### Phase 4: Code Architecture & Development Workflow
+
+#### Modular Structure:
+```
+Frontend: visualization.py (Streamlit + Plotly)
+Backend: app.py (API routing and processing)
+Data Layer: data_store.py (MongoDB queries with PyMongo)
+```
+
+#### Development Environment Setup:
+1. **Virtual Environment**: Dedicated Python environment
+2. **Dependencies**: Comprehensive requirements.txt documentation
+3. **Multi-terminal Development**: MongoDB, Frontend, Backend separation
+4. **Containerization**: Docker implementation for streamlined deployment
+
+### Phase 5: Containerization & Cloud Deployment
+
+#### Docker Implementation:
+- **Frontend Container**: Streamlit application containerization
+- **Backend Container**: Flask API containerization
+- **Database Container**: MongoDB containerization
+- **Orchestration**: docker-compose.yml for multi-container management
+
+#### AWS Cloud Deployment:
+
+##### EC2 Instance Setup:
+- **Instance Name**: "Social_Media_Analysis"
+- **Operating System**: Amazon Linux Base (AMI)
+- **Instance Type**: t2.micro
+- **Storage**: 8 GiB configuration
+- **Security Group**: Ports 80, 8501, 5000 enabled
+
+##### Server Configuration:
+```bash
+# System updates
+sudo dnf update -y
+
+# Docker installation and setup
+sudo dnf install docker -y
+sudo systemctl start docker
+sudo systemctl enable docker
+sudo usermod -aG docker ec2-user
+
+# Git installation and repository cloning
+sudo dnf install git -y
+git clone https://github.com/VishwaSaiChalla/Technology_Intern_Take_Home_Submission.git
+
+# Docker Compose setup
+sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.7/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+```
+
+##### Application Deployment:
+- **Container Launch**: `docker compose up -d`
+- **Health Monitoring**: `docker-compose logs -f`
+- **Port Exposure**: `http://<EC2_Private_IP_Address>:8501`
+
+##### Elastic IP Configuration:
+- **Static IP Allocation**: AWS Management Console configuration
+- **IP Association**: Persistent public IP for reliable access
+- **DNS Integration**: Domain name linking capability
+- **Security Configuration**: Inbound traffic allowance on necessary ports
+
+### Phase 6: Testing & Optimization
+
+#### Performance Testing:
+- **Load Testing**: Container performance under various loads
+- **Database Performance**: MongoDB query optimization
+- **API Response Times**: Endpoint performance monitoring
+- **Real-time Updates**: Scheduler and refresh mechanism testing
+
+#### User Experience Optimization:
+- **Interface Refinement**: Streamlit layout improvements
+- **Responsive Design**: Multi-device compatibility
+- **Error Handling**: Graceful failure management
+- **Documentation**: Complete technical and user guides
+
 ## 🔮 Future Enhancements
 
 - **Advanced Analytics**: Machine learning insights
