@@ -138,15 +138,10 @@ def insert_data_to_mongodb(data_store: SocialMediaDataStore, df: pd.DataFrame) -
         transformed_df = transformer.perform_basic_transformations(df)
         logger.info("Basic transformations completed successfully")
         
-        # Convert post_time to ISO 8601 string format for storage
+        # Remove post_time column as it's been converted to Posted_date and Posted_time
         if 'post_time' in transformed_df.columns:
-            try:
-                transformed_df['post_time'] = pd.to_datetime(transformed_df['post_time'], format='%m/%d/%Y %H:%M', errors='coerce')
-                transformed_df['post_time'] = transformed_df['post_time'].dt.strftime('%Y-%m-%dT%H:%M:%S')
-                logger.info("Successfully converted post_time to ISO format")
-            except Exception as e:
-                logger.warning(f"Failed to convert post_time format: {e}")
-                # Keep original format if conversion fails
+            transformed_df = transformed_df.drop(columns=['post_time'])
+            logger.info("Removed post_time column after transformation to Posted_date/Posted_time")
         
         records = transformed_df.to_dict('records')
         

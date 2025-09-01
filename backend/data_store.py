@@ -32,7 +32,7 @@ class SocialMediaDataStore:
         self.database_schema = {
             "$jsonSchema": {
                 "bsonType": "object",
-                "required": ["platform", "post_type", "post_time", "likes", "comments", "shares", "sentiment_score"],
+                "required": ["platform", "post_type", "Posted_date", "Posted_time", "likes", "comments", "shares", "sentiment_score"],
                 "properties": {
 
                     "post_id": {
@@ -48,10 +48,6 @@ class SocialMediaDataStore:
                         "bsonType": "string",
                         "description": "Type of post (e.g. text, image, video).",
                         "enum": ["text", "image", "video", "poll", "carousel", "story"]
-                    },
-                    "post_time": {
-                        "bsonType": "string",
-                        "description": "Time when the post was made (in ISO 8601 format)."
                     },
                     "Posted_date": {
                         "bsonType": "string",
@@ -176,10 +172,6 @@ class SocialMediaDataStore:
             logger.error(f"Failed to create collection: {e}")
             return False
     
-
-    
-
-    
     def insert_data(self, data: List[Dict[str, Any]]) -> bool:
         """
         Insert data into the collection.
@@ -234,12 +226,11 @@ class SocialMediaDataStore:
             df = transformer.perform_basic_transformations(df)
             logger.info("Basic transformations completed successfully")
             
-            # Convert post_time to ISO 8601 string format for storage
-            logger.debug("Converting post_time to ISO 8601 format for storage")
+            # The transformation should have created Posted_date and Posted_time columns from post_time
+            # Remove the original post_time column as it's not needed in the database
             if 'post_time' in df.columns:
-                # First convert to datetime, then to ISO string format
-                df['post_time'] = pd.to_datetime(df['post_time'], format='%m/%d/%Y %H:%M', errors='coerce')
-                df['post_time'] = df['post_time'].dt.strftime('%Y-%m-%dT%H:%M:%S')
+                df = df.drop(columns=['post_time'])
+                logger.info("Removed post_time column after transformation to Posted_date/Posted_time")
 
             # Filter columns to only include those defined in the schema
             logger.debug("Filtering DataFrame columns to match schema")
@@ -271,8 +262,6 @@ class SocialMediaDataStore:
         except Exception as e:
             logger.error(f"Failed to ingest data from CSV {file_path}: {e}")
             return False
-    
-
     
     def get_stats(self) -> Dict[str, Any]:
         """
@@ -683,13 +672,6 @@ class SocialMediaDataStore:
             logger.error(f"Failed to get decomposition tree data: {e}")
             return []
 
-    
-
-    
-
-    
-
-    
     def __enter__(self):
         """Context manager entry"""
         logger.info("Entering SocialMediaDataStore context manager")
