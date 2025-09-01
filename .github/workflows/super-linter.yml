@@ -1,10 +1,6 @@
 name: Super Linter
 
-on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main, develop ]
+on: push
 
 jobs:
   super-linter:
@@ -19,17 +15,4 @@ jobs:
         env:
           DEFAULT_BRANCH: main
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VALIDATE_ALL_CODEBASE: false
-          VALIDATE_PYTHON_BLACK: true
-          VALIDATE_PYTHON_FLAKE8: true
-          VALIDATE_PYTHON_ISORT: true
-          VALIDATE_PYTHON_PYLINT: true
-          VALIDATE_PYTHON_MYPY: true
-          VALIDATE_DOCKERFILE_HADOLINT: true
-          VALIDATE_YAML: true
-          VALIDATE_JSON: true
-          VALIDATE_MARKDOWN: true
-          VALIDATE_BASH: true
-          VALIDATE_SHELL_SHFMT: true
-          # Exclude virtual environment and cache directories
-          FILTER_REGEX_EXCLUDE: "(.*\/)?(environ|__pycache__|\.git|\.github)(\/.*)?"
+          
