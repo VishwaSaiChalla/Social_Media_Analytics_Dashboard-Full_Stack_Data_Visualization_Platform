@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 from apscheduler.schedulers.background import BackgroundScheduler
-
 from backend.data_store import SocialMediaDataStore
 from backend.transformation import DataTransformer
 
