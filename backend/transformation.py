@@ -214,4 +214,5 @@ if __name__ == "__main__":
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     
-    logger.info("DataTransformer module loaded successfully") 
+    logger.info("DataTransformer module loaded successfully")  
+ 
