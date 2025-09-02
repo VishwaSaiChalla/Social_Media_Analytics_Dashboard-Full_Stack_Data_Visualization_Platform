@@ -1,11 +1,12 @@
-import streamlit as st
-import requests
-import pandas as pd
-import plotly.express as px
-import time
-from datetime import datetime
 import logging
 import os
+import time
+from datetime import datetime
+
+import pandas as pd
+import plotly.express as px
+import requests
+import streamlit as st
 
 # Configure logging
 logging.basicConfig(
@@ -74,7 +75,8 @@ class DashboardApp:
             return None
 
     def perform_initial_setup(self):
-        """Perform initial setup by checking database status and ingesting data if needed"""
+        """Perform initial setup by checking database status and ingesting data
+        if needed"""
         try:
             st.info("🔄 Checking database and performing initial setup...")
 
@@ -99,7 +101,8 @@ class DashboardApp:
                         self.session_state.data_ingested = True
                         self.session_state.initial_setup_done = True
 
-                        # Show appropriate message based on whether ingestion was performed
+                        # Show appropriate message based on whether ingestion
+                        # was performed
                         if response.get("ingestion_performed", False):
                             st.success(
                                 f"✅ {response.get('message', 'Initial data ingestion completed!')}"
@@ -120,7 +123,7 @@ class DashboardApp:
                         return False
             else:
                 st.error(
-                    "❌ Database connection failed. Please check MongoDB connection."
+                    "❌ Database connection failed. Please check MongoDB " "connection."
                 )
                 return False
 
@@ -544,7 +547,7 @@ class DashboardApp:
                 x="Count",
                 y="Platform",
                 color="Sentiment",
-                title="📊 Sentiment Distribution by Platform (Stacked Bar Chart)",
+                title="📊 Sentiment Distribution by Platform " "(Stacked Bar Chart)",
                 barmode="stack",
                 color_discrete_map={
                     "Positive": "#1f77b4",  # Blue
@@ -619,7 +622,8 @@ class DashboardApp:
                 x="Post Type",
                 y="Count",
                 color="Sentiment",
-                title="📊 Sentiment Distribution by Post Type (Stacked Column Chart)",
+                title="📊 Sentiment Distribution by Post Type "
+                "(Stacked Column Chart)",
                 barmode="stack",
                 color_discrete_map={
                     "Positive": "#1f77b4",  # Blue
@@ -654,8 +658,6 @@ class DashboardApp:
 
         # Create four columns for the four platforms
         col1, col2, col3, col4 = st.columns(4)
-
-        platforms = ["Facebook", "Twitter", "LinkedIn", "Instagram"]
 
         with col1:
             self.create_donut_chart(sentiment_data, "Facebook", "📘 Facebook Sentiment")
@@ -863,7 +865,8 @@ class DashboardApp:
                 df,
                 path=["Platform", "Post Type", "Sentiment Score"],
                 values="Total Posts",
-                title="🌳 Decomposition Tree - Posts by Platform, Post Type, and Sentiment",
+                title="🌳 Decomposition Tree - Posts by Platform, "
+                "Post Type, and Sentiment",
                 color="Total Posts",
                 color_continuous_scale="Blues",
                 hover_data=["Total Likes", "Total Comments", "Total Shares"],
@@ -894,7 +897,8 @@ class DashboardApp:
         if not self.session_state.initial_setup_done:
             if not self.perform_initial_setup():
                 st.error(
-                    "❌ Failed to initialize database. Please check MongoDB connection."
+                    "❌ Failed to initialize database. Please check MongoDB "
+                    "connection."
                 )
                 return
 
@@ -962,7 +966,6 @@ class DashboardApp:
         average_comments_data = self.get_average_comments_by_date_platform()
         average_shares_data = self.get_average_shares_by_date_platform()
         shares_by_post_type_data = self.get_shares_by_post_type()
-        decomposition_tree_data = self.get_decomposition_tree_data()
 
         # Display engagement charts side by side
         if engagement_data or day_data:

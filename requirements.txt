@@ -8,3 +8,5 @@ streamlit==1.29.0
 requests==2.31.0
 apscheduler==3.10.4
 black==23.9.1
+flake8==6.1.0
+isort==5.12.0

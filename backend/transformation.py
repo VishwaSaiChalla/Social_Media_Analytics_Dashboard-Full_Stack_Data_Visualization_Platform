@@ -1,20 +1,20 @@
-#!/usr/bin/env python3
-"""
-Data transformation utilities for social media analytics.
-This module provides a simple method to transform social media data before database ingestion.
-"""
+import logging
 
 import pandas as pd
-import logging
-from typing import Dict, List, Optional, Any
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
+"""
+Data transformation utilities for social media analytics.
+This module provides a simple method to transform social media data
+before database ingestion.
+"""
 
 
 class DataTransformer:
     """
-    Class for transforming social media data for better visualization and analysis.
+    Class for transforming social media data for better visualization
+    and analysis.
     """
 
     def __init__(self):
@@ -23,7 +23,8 @@ class DataTransformer:
 
     def perform_basic_transformations(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Perform basic transformations on social media data before database ingestion.
+        Perform basic transformations on social media data before
+        database ingestion.
 
         Args:
             df: DataFrame containing the social media data
@@ -49,7 +50,7 @@ class DataTransformer:
                     median_val = transformed_df[col].median()
                     transformed_df[col] = transformed_df[col].fillna(median_val)
                     logger.info(
-                        f"Filled missing values in {col} with median: {median_val}"
+                        f"Filled missing values in {col} with median: " f"{median_val}"
                     )
 
             # Fill missing text data
@@ -77,7 +78,8 @@ class DataTransformer:
                     + transformed_df["shares"]
                 )
 
-                # Engagement ratio (comments + shares) / likes (avoid division by zero)
+                # Engagement ratio (comments + shares) / likes
+                # (avoid division by zero)
                 transformed_df["engagement_ratio"] = transformed_df.apply(
                     lambda row: (
                         (row["comments"] + row["shares"]) / row["likes"]
@@ -150,7 +152,8 @@ class DataTransformer:
                     transformed_df["engagement_level"] = "Medium"
 
             logger.info(
-                f"Basic transformations completed. Final shape: {transformed_df.shape}"
+                f"Basic transformations completed. Final shape: "
+                f"{transformed_df.shape}"
             )
             return transformed_df
 
@@ -162,14 +165,17 @@ class DataTransformer:
         self, df: pd.DataFrame, post_time_column: str = "post_time"
     ) -> pd.DataFrame:
         """
-        Convert post_time column into separate Posted_date and Posted_time columns.
+        Convert post_time column into separate Posted_date and
+        Posted_time columns.
 
         Args:
             df: DataFrame containing the social media data
-            post_time_column: Name of the column containing post time data (default: 'post_time')
+            post_time_column: Name of the column containing post time data
+            (default: 'post_time')
 
         Returns:
-            pd.DataFrame: DataFrame with additional Posted_date and Posted_time columns
+            pd.DataFrame: DataFrame with additional Posted_date and
+            Posted_time columns
         """
         logger.info(f"Converting {post_time_column} to separate date and time columns")
 
@@ -185,9 +191,11 @@ class DataTransformer:
             # Create a temporary datetime column for processing
             temp_datetime_col = f"temp_{post_time_column}"
 
-            # Convert post_time to datetime (handle both CSV format first, then ISO format)
+            # Convert post_time to datetime (handle both CSV format first,
+            # then ISO format)
             if transformed_df[post_time_column].dtype == "object":
-                # Try CSV format first (8/17/2023 14:45), then ISO format (2023-08-17T14:45:00)
+                # Try CSV format first (8/17/2023 14:45), then ISO format
+                # (2023-08-17T14:45:00)
                 try:
                     transformed_df[temp_datetime_col] = pd.to_datetime(
                         transformed_df[post_time_column],
@@ -196,7 +204,7 @@ class DataTransformer:
                     )
                 except Exception as e:
                     logger.warning(
-                        f"Failed to parse with CSV format, trying ISO format: {e}"
+                        f"Failed to parse with CSV format, trying ISO format: " f"{e}"
                     )
                     try:
                         transformed_df[temp_datetime_col] = pd.to_datetime(
@@ -206,7 +214,9 @@ class DataTransformer:
                         )
                     except Exception as e2:
                         logger.warning(
-                            f"Failed to parse with ISO format, trying auto-detect: {e2}"
+                            f"Failed to parse with ISO format, trying "
+                            f"auto-detect: "
+                            f"{e2}"
                         )
                         # Try auto-detect format
                         transformed_df[temp_datetime_col] = pd.to_datetime(
@@ -218,7 +228,8 @@ class DataTransformer:
                 temp_datetime_col in transformed_df.columns
                 and not transformed_df[temp_datetime_col].isna().all()
             ):
-                # Extract date and time components and convert to string immediately
+                # Extract date and time components and convert to string
+                # immediately
                 transformed_df["Posted_date"] = transformed_df[
                     temp_datetime_col
                 ].dt.strftime("%Y-%m-%d")
@@ -230,14 +241,17 @@ class DataTransformer:
                 transformed_df.drop(columns=[temp_datetime_col], inplace=True)
 
                 logger.info(
-                    f"Successfully converted {post_time_column} to Posted_date and Posted_time columns"
+                    f"Successfully converted {post_time_column} to "
+                    f"Posted_date "
+                    f"and Posted_time columns"
                 )
                 logger.debug(
-                    f"Sample transformed data: {transformed_df[['Posted_date', 'Posted_time']].head()}"
+                    f"Sample transformed data: "
+                    f"{transformed_df[['Posted_date', 'Posted_time']].head()}"
                 )
             else:
                 logger.warning(
-                    f"Failed to convert {post_time_column}, keeping original format"
+                    f"Failed to convert {post_time_column}, keeping original " f"format"
                 )
                 if temp_datetime_col in transformed_df.columns:
                     transformed_df.drop(columns=[temp_datetime_col], inplace=True)

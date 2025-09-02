@@ -1,13 +1,12 @@
+import logging
 import os
 import sys
-import logging
 
+from apscheduler.schedulers.background import BackgroundScheduler
+from data_ingest import insert_data_to_mongodb, mock_data_generator
+from data_store import SocialMediaDataStore
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from apscheduler.schedulers.background import BackgroundScheduler
-
-from data_store import SocialMediaDataStore
-from data_ingest import mock_data_generator, insert_data_to_mongodb
 
 # Add the backend directory to the path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
