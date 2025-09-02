@@ -58,49 +58,7 @@ class DataTransformer:
             # 2. Convert post_time to separate date and time columns
             logger.info("Converting post_time to separate date and time columns...")
             if 'post_time' in transformed_df.columns:
-                # Create a temporary datetime column for processing
-                temp_datetime_col = "temp_post_time"
-                
-                # Convert post_time to datetime (handle both CSV format first, then ISO format)
-                if transformed_df['post_time'].dtype == 'object':
-                    try:
-                        # Try CSV format first (8/17/2023 14:45)
-                        transformed_df[temp_datetime_col] = pd.to_datetime(
-                            transformed_df['post_time'], 
-                            format='%m/%d/%Y %H:%M',
-                            errors='coerce'
-                        )
-                    except Exception as e:
-                        logger.warning(f"Failed to parse with CSV format, trying ISO format: {e}")
-                        try:
-                            # Try ISO format (2023-08-17T14:45:00)
-                            transformed_df[temp_datetime_col] = pd.to_datetime(
-                                transformed_df['post_time'], 
-                                format='%Y-%m-%dT%H:%M:%S',
-                                errors='coerce'
-                            )
-                        except Exception as e2:
-                            logger.warning(f"Failed to parse with ISO format, trying auto-detect: {e2}")
-                            # Try auto-detect format
-                            transformed_df[temp_datetime_col] = pd.to_datetime(
-                                transformed_df['post_time'], 
-                                errors='coerce'
-                            )
-                
-                # Check if conversion was successful
-                if temp_datetime_col in transformed_df.columns and not transformed_df[temp_datetime_col].isna().all():
-                    # Extract date and time components and convert to string immediately
-                    transformed_df['Posted_date'] = transformed_df[temp_datetime_col].dt.strftime('%Y-%m-%d')
-                    transformed_df['Posted_time'] = transformed_df[temp_datetime_col].dt.strftime('%H:%M:%S')
-                    
-                    # Remove the temporary column
-                    transformed_df.drop(columns=[temp_datetime_col], inplace=True)
-                    
-                    logger.info("Successfully converted post_time to Posted_date and Posted_time columns")
-                else:
-                    logger.warning("Failed to convert post_time, keeping original format")
-                    if temp_datetime_col in transformed_df.columns:
-                        transformed_df.drop(columns=[temp_datetime_col], inplace=True)
+                transformed_df = self.convert_post_time_to_date_time(transformed_df, 'post_time')
             
             # 3. Create basic engagement metrics
             logger.info("Creating basic engagement metrics...")

@@ -456,6 +456,37 @@ class SocialMediaDataStore:
             logger.error(f"Failed to get engagement by day: {e}")
             return []
 
+    def _get_sentiment_aggregation_pipeline(self, group_field: str) -> List[Dict]:
+        """
+        Helper method to create sentiment aggregation pipeline.
+        
+        Args:
+            group_field: Field to group by (e.g., 'platform', 'post_type')
+            
+        Returns:
+            List[Dict]: MongoDB aggregation pipeline
+        """
+        return [
+            {'$group': {
+                '_id': {
+                    group_field: f'${group_field}',
+                    'sentiment': '$sentiment_score'
+                },
+                'count': {'$sum': 1}
+            }},
+            {'$group': {
+                '_id': f'$_id.{group_field}',
+                'sentiments': {
+                    '$push': {
+                        'sentiment': '$_id.sentiment',
+                        'count': '$count'
+                    }
+                },
+                'total_posts': {'$sum': '$count'}
+            }},
+            {'$sort': {'_id': 1}}
+        ]
+
     def get_sentiment_by_platform(self) -> List[Dict]:
         """
         Get sentiment distribution by platform.
@@ -469,27 +500,7 @@ class SocialMediaDataStore:
                 logger.error("Database not connected. Call connect() first.")
                 return []
                 
-            pipeline = [
-                {'$group': {
-                    '_id': {
-                        'platform': '$platform',
-                        'sentiment': '$sentiment_score'
-                    },
-                    'count': {'$sum': 1}
-                }},
-                {'$group': {
-                    '_id': '$_id.platform',
-                    'sentiments': {
-                        '$push': {
-                            'sentiment': '$_id.sentiment',
-                            'count': '$count'
-                        }
-                    },
-                    'total_posts': {'$sum': '$count'}
-                }},
-                {'$sort': {'_id': 1}}
-            ]
-            
+            pipeline = self._get_sentiment_aggregation_pipeline('platform')
             results = list(self.collection.aggregate(pipeline))
             logger.info(f"Successfully retrieved sentiment by platform: {results}")
             return results
@@ -510,27 +521,7 @@ class SocialMediaDataStore:
                 logger.error("Database not connected. Call connect() first.")
                 return []
                 
-            pipeline = [
-                {'$group': {
-                    '_id': {
-                        'post_type': '$post_type',
-                        'sentiment': '$sentiment_score'
-                    },
-                    'count': {'$sum': 1}
-                }},
-                {'$group': {
-                    '_id': '$_id.post_type',
-                    'sentiments': {
-                        '$push': {
-                            'sentiment': '$_id.sentiment',
-                            'count': '$count'
-                        }
-                    },
-                    'total_posts': {'$sum': '$count'}
-                }},
-                {'$sort': {'_id': 1}}
-            ]
-            
+            pipeline = self._get_sentiment_aggregation_pipeline('post_type')
             results = list(self.collection.aggregate(pipeline))
             logger.info(f"Successfully retrieved sentiment by post type: {results}")
             return results
