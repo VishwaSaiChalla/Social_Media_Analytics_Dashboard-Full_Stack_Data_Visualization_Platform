@@ -25,9 +25,7 @@ class SocialMediaDataStore:
             connection_string: MongoDB connection string
             database_name: Name of the database
         """
-        logger.info(
-            f"Initializing SocialMediaDataStore with database: {database_name}"
-        )
+        logger.info(f"Initializing SocialMediaDataStore with database: {database_name}")
         self.connection_string = connection_string
         self.database_name = database_name
         self.client = None
@@ -59,19 +57,12 @@ class SocialMediaDataStore:
                             "Platform where the post was made "
                             "(e.g. Facebook, Twitter, etc.)."
                         ),
-                        "enum": [
-                            "Facebook", "Twitter", "Instagram", "LinkedIn"
-                        ],
+                        "enum": ["Facebook", "Twitter", "Instagram", "LinkedIn"],
                     },
                     "post_type": {
                         "bsonType": "string",
-                        "description": (
-                            "Type of post (e.g. text, image, video)."
-                        ),
-                        "enum": [
-                            "text", "image", "video", "poll", "carousel",
-                            "story"
-                        ],
+                        "description": ("Type of post (e.g. text, image, video)."),
+                        "enum": ["text", "image", "video", "poll", "carousel", "story"],
                     },
                     "Posted_date": {
                         "bsonType": "string",
@@ -129,9 +120,7 @@ class SocialMediaDataStore:
                     },
                     "posted_day_of_week": {
                         "bsonType": "string",
-                        "description": (
-                            "Day of the week when the post was made."
-                        ),
+                        "description": ("Day of the week when the post was made."),
                         "enum": [
                             "Monday",
                             "Tuesday",
@@ -172,8 +161,7 @@ class SocialMediaDataStore:
                     "engagement_level": {
                         "bsonType": "string",
                         "description": (
-                            "Engagement level category based on "
-                            "total engagement."
+                            "Engagement level category based on " "total engagement."
                         ),
                         "enum": ["Low", "Medium", "High", "Very High"],
                     },
@@ -189,9 +177,7 @@ class SocialMediaDataStore:
         Returns:
             bool: True if connection successful, False otherwise
         """
-        logger.info(
-            f"Attempting to connect to MongoDB at: {self.connection_string}"
-        )
+        logger.info(f"Attempting to connect to MongoDB at: {self.connection_string}")
         try:
             self.client = MongoClient(self.connection_string)
             if self.client is None:
@@ -263,24 +249,16 @@ class SocialMediaDataStore:
         Returns:
             bool: True if insertion successful
         """
-        logger.info(
-            f"Attempting to insert {len(data)} documents into collection"
-        )
-        logger.debug(
-            f"Sample data to insert: {data[:2] if data else 'No data'}"
-        )
+        logger.info(f"Attempting to insert {len(data)} documents into collection")
+        logger.debug(f"Sample data to insert: {data[:2] if data else 'No data'}")
         try:
             if self.collection is None:
                 logger.error("Database not connected")
                 raise ValueError("Database not connected")
 
             result = self.collection.insert_many(data)
-            logger.info(
-                f"Successfully inserted {len(result.inserted_ids)} documents"
-            )
-            logger.debug(
-                f"Inserted document IDs: {result.inserted_ids[:5]}..."
-            )
+            logger.info(f"Successfully inserted {len(result.inserted_ids)} documents")
+            logger.debug(f"Inserted document IDs: {result.inserted_ids[:5]}...")
             return True
         except Exception as e:
             logger.error(f"Failed to insert data: {e}")
@@ -338,13 +316,10 @@ class SocialMediaDataStore:
             allowed_columns = [col for col in allowed_columns if col != "_id"]
 
             # Keep only columns that exist in both DataFrame and schema
-            available_columns = [
-                col for col in df.columns if col in allowed_columns
-            ]
+            available_columns = [col for col in df.columns if col in allowed_columns]
             if not available_columns:
                 logger.error(
-                    "No valid columns found in CSV that match the "
-                    "database schema"
+                    "No valid columns found in CSV that match the " "database schema"
                 )
                 return False
 
@@ -356,16 +331,12 @@ class SocialMediaDataStore:
 
             # Convert DataFrame to dictionary format for MongoDB insertion
             data_dict = df.to_dict("records")
-            logger.info(
-                f"Converted DataFrame to {len(data_dict)} dictionary records"
-            )
+            logger.info(f"Converted DataFrame to {len(data_dict)} dictionary records")
 
             # Insert data into the MongoDB collection using insert_data method
             success = self.insert_data(data_dict)
             if success:
-                logger.info(
-                    f"Data ingested successfully from {file_path} into MongoDB"
-                )
+                logger.info(f"Data ingested successfully from {file_path} into MongoDB")
             else:
                 logger.error(f"Failed to insert data from {file_path}")
             return success
@@ -382,9 +353,7 @@ class SocialMediaDataStore:
             Dict: Statistics including platform, post type, sentiment, and
             engagement stats
         """
-        logger.info(
-            "Attempting to retrieve aggregated statistics from collection"
-        )
+        logger.info("Attempting to retrieve aggregated statistics from collection")
         try:
             if self.collection is None:
                 logger.error("Database not connected. Call connect() first.")
@@ -412,14 +381,7 @@ class SocialMediaDataStore:
             logger.debug("Calculating sentiment statistics")
             sentiment_stats = list(
                 self.collection.aggregate(
-                    [
-                        {
-                            "$group": {
-                                "_id": "$sentiment_score",
-                                "count": {"$sum": 1}
-                            }
-                        }
-                    ]
+                    [{"$group": {"_id": "$sentiment_score", "count": {"$sum": 1}}}]
                 )
             )
             logger.info(f"Retrieved sentiment stats: {sentiment_stats}")
@@ -447,9 +409,7 @@ class SocialMediaDataStore:
                 "platform_stats": platform_stats,
                 "post_type_stats": post_type_stats,
                 "sentiment_stats": sentiment_stats,
-                "engagement_stats": (
-                    engagement_stats[0] if engagement_stats else {}
-                ),
+                "engagement_stats": (engagement_stats[0] if engagement_stats else {}),
             }
             logger.info("Successfully retrieved all aggregated statistics")
             return stats
@@ -472,9 +432,7 @@ class SocialMediaDataStore:
                 return 0
 
             count = self.collection.count_documents({})
-            logger.info(
-                f"Successfully counted {count} elements in the collection"
-            )
+            logger.info(f"Successfully counted {count} elements in the collection")
             return count
         except Exception as e:
             logger.error(f"Failed to get count of elements: {e}")
@@ -519,14 +477,10 @@ class SocialMediaDataStore:
 
             if max_doc and "post_id" in max_doc:
                 max_post_id = max_doc["post_id"]
-                logger.info(
-                    f"Successfully found maximum post_id: {max_post_id}"
-                )
+                logger.info(f"Successfully found maximum post_id: {max_post_id}")
                 return max_post_id
             else:
-                logger.info(
-                    "No documents found or no post_id field, returning 0"
-                )
+                logger.info("No documents found or no post_id field, returning 0")
                 return 0
         except Exception as e:
             logger.error(f"Failed to get maximum post_id: {e}")
@@ -560,9 +514,7 @@ class SocialMediaDataStore:
             ]
 
             results = list(self.collection.aggregate(pipeline))
-            logger.info(
-                f"Successfully retrieved platform engagement data: {results}"
-            )
+            logger.info(f"Successfully retrieved platform engagement data: {results}")
             return results
         except Exception as e:
             logger.error(f"Failed to get platform engagement: {e}")
@@ -595,17 +547,13 @@ class SocialMediaDataStore:
             ]
 
             results = list(self.collection.aggregate(pipeline))
-            logger.info(
-                f"Successfully retrieved engagement by day data: {results}"
-            )
+            logger.info(f"Successfully retrieved engagement by day data: {results}")
             return results
         except Exception as e:
             logger.error(f"Failed to get engagement by day: {e}")
             return []
 
-    def _get_sentiment_aggregation_pipeline(
-        self, group_field: str
-    ) -> List[Dict]:
+    def _get_sentiment_aggregation_pipeline(self, group_field: str) -> List[Dict]:
         """
         Helper method to create sentiment aggregation pipeline.
 
@@ -629,9 +577,7 @@ class SocialMediaDataStore:
                 "$group": {
                     "_id": f"$_id.{group_field}",
                     "sentiments": {
-                        "$push": {
-                            "sentiment": "$_id.sentiment", "count": "$count"
-                        }
+                        "$push": {"sentiment": "$_id.sentiment", "count": "$count"}
                     },
                     "total_posts": {"$sum": "$count"},
                 }
@@ -655,9 +601,7 @@ class SocialMediaDataStore:
 
             pipeline = self._get_sentiment_aggregation_pipeline("platform")
             results = list(self.collection.aggregate(pipeline))
-            logger.info(
-                f"Successfully retrieved sentiment by platform: {results}"
-            )
+            logger.info(f"Successfully retrieved sentiment by platform: {results}")
             return results
         except Exception as e:
             logger.error(f"Failed to get sentiment by platform: {e}")
@@ -679,9 +623,7 @@ class SocialMediaDataStore:
 
             pipeline = self._get_sentiment_aggregation_pipeline("post_type")
             results = list(self.collection.aggregate(pipeline))
-            logger.info(
-                f"Successfully retrieved sentiment by post type: {results}"
-            )
+            logger.info(f"Successfully retrieved sentiment by post type: {results}")
             return results
         except Exception as e:
             logger.error(f"Failed to get sentiment by post type: {e}")
@@ -706,9 +648,7 @@ class SocialMediaDataStore:
             pipeline = [
                 {
                     "$group": {
-                        "_id": {
-                            "date": "$Posted_date", "platform": "$platform"
-                        },
+                        "_id": {"date": "$Posted_date", "platform": "$platform"},
                         f"avg_{metric}": {"$avg": f"${metric}"},
                         "total_posts": {"$sum": 1},
                     }
@@ -724,9 +664,7 @@ class SocialMediaDataStore:
             )
             return results
         except Exception as e:
-            logger.error(
-                f"Failed to get average {metric} by date and platform: {e}"
-            )
+            logger.error(f"Failed to get average {metric} by date and platform: {e}")
             return []
 
     def get_average_likes_by_date_platform(self) -> List[Dict]:
