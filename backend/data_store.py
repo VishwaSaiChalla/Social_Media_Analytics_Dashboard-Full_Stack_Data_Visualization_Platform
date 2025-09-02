@@ -175,9 +175,7 @@ class SocialMediaDataStore:
                             "Engagement level category based on "
                             "total engagement."
                         ),
-                        "enum": [
-                            "Low", "Medium", "High", "Very High"
-                        ],
+                        "enum": ["Low", "Medium", "High", "Very High"],
                     },
                 },
             }
@@ -709,8 +707,7 @@ class SocialMediaDataStore:
                 {
                     "$group": {
                         "_id": {
-                            "date": "$Posted_date",
-                            "platform": "$platform"
+                            "date": "$Posted_date", "platform": "$platform"
                         },
                         f"avg_{metric}": {"$avg": f"${metric}"},
                         "total_posts": {"$sum": 1},
@@ -782,7 +779,7 @@ class SocialMediaDataStore:
     def get_decomposition_tree_data(
         self,
         platform_filter: Optional[str] = None,
-        post_type_filter: Optional[str] = None
+        post_type_filter: Optional[str] = None,
     ) -> List[Dict]:
         """
         Get hierarchical data for decomposition tree (treemap).
@@ -897,6 +894,4 @@ if __name__ == "__main__":
         stats = data_store.get_stats()
         print("Statistics:", stats)
 
-    logger.info(
-        "SocialMediaDataStore example usage completed"
-    )
+    logger.info("SocialMediaDataStore example usage completed")

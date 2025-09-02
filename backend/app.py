@@ -1,8 +1,9 @@
 import os
 import sys
+import logging
+
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-import logging
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from data_store import SocialMediaDataStore
@@ -33,14 +34,10 @@ class BackendApp:
         """Initialize the data store connection"""
         try:
             # Use environment variable for MongoDB URI, fallback to localhost
-            mongodb_uri = os.getenv(
-                "MONGODB_URI", "mongodb://localhost:27017/"
-            )
+            mongodb_uri = os.getenv("MONGODB_URI", "mongodb://localhost:27017/")
             logger.info(f"Connecting to MongoDB at: {mongodb_uri}")
 
-            self.data_store = SocialMediaDataStore(
-                connection_string=mongodb_uri
-            )
+            self.data_store = SocialMediaDataStore(connection_string=mongodb_uri)
             if not self.data_store.connect():
                 logger.error("Failed to connect to database")
                 raise Exception("Database connection failed")
@@ -64,9 +61,7 @@ class BackendApp:
             current_count = self.data_store.get_count()
 
             if current_count == 0:
-                logger.info(
-                    "Database is empty. Attempting to auto-ingest CSV data..."
-                )
+                logger.info("Database is empty. Attempting to auto-ingest CSV data...")
 
                 # Check if CSV file exists
                 csv_path = os.path.join(
@@ -129,17 +124,13 @@ class BackendApp:
                             "database_connected": True,
                             "total_records": count,
                             "scheduler_running": (
-                                self.scheduler.running
-                                if self.scheduler else False
+                                self.scheduler.running if self.scheduler else False
                             ),
                         }
                     )
                 else:
                     return (
-                        jsonify({
-                            "status": "unhealthy",
-                            "database_connected": False
-                        }),
+                        jsonify({"status": "unhealthy", "database_connected": False}),
                         500,
                     )
 
@@ -194,10 +185,7 @@ class BackendApp:
                         }
                     )
                 else:
-                    return (
-                        jsonify({"error": "Failed to ingest data from CSV"}),
-                        500
-                    )
+                    return (jsonify({"error": "Failed to ingest data from CSV"}), 500)
 
             except Exception as e:
                 logger.error(f"Error in ingest_csv: {e}")
@@ -252,8 +240,7 @@ class BackendApp:
                                 logger.error("Failed to insert scheduled data")
                         except Exception as insert_error:
                             logger.error(
-                                f"Scheduler: Failed to insert data: "
-                                f"{insert_error}"
+                                f"Scheduler: Failed to insert data: " f"{insert_error}"
                             )
 
                     except Exception as e:
@@ -262,16 +249,12 @@ class BackendApp:
 
                 # Schedule the job to run every 30 seconds
                 self.scheduler.add_job(
-                    insert_mock_data,
-                    "interval",
-                    seconds=30,
-                    id="mock_data_insertion"
+                    insert_mock_data, "interval", seconds=30, id="mock_data_insertion"
                 )
 
                 self.scheduler.start()
                 logger.info(
-                    "Scheduler started - mock data will be inserted "
-                    "every 30 seconds"
+                    "Scheduler started - mock data will be inserted " "every 30 seconds"
                 )
 
                 return jsonify(
@@ -296,9 +279,7 @@ class BackendApp:
                     self.scheduler.shutdown()
                     self.scheduler = None
                     logger.info("Scheduler stopped")
-                    return jsonify({
-                        "message": "Scheduler stopped successfully"
-                    })
+                    return jsonify({"message": "Scheduler stopped successfully"})
                 else:
                     return jsonify({"message": "Scheduler was not running"})
 
@@ -314,11 +295,7 @@ class BackendApp:
                 count = self.data_store.get_count()
 
                 return jsonify(
-                    {
-                        "success": True,
-                        "total_records": count,
-                        "statistics": stats
-                    }
+                    {"success": True, "total_records": count, "statistics": stats}
                 )
 
             except Exception as e:
@@ -345,10 +322,7 @@ class BackendApp:
             try:
                 day_data = self.data_store.get_engagement_by_day()
 
-                return jsonify({
-                    "success": True,
-                    "engagement_by_day": day_data
-                })
+                return jsonify({"success": True, "engagement_by_day": day_data})
 
             except Exception as e:
                 logger.error(f"Error getting engagement by day: {e}")
@@ -386,32 +360,21 @@ class BackendApp:
         def get_average_likes_by_date_platform():
             """Get average likes by date and platform"""
             try:
-                likes_data = (
-                    self.data_store.get_average_likes_by_date_platform()
-                )
+                likes_data = self.data_store.get_average_likes_by_date_platform()
 
                 return jsonify(
-                    {
-                        "success": True,
-                        "average_likes_by_date_platform": likes_data
-                    }
+                    {"success": True, "average_likes_by_date_platform": likes_data}
                 )
 
             except Exception as e:
-                logger.error(
-                    f"Error getting average likes by date and platform: {e}"
-                )
+                logger.error(f"Error getting average likes by date and platform: {e}")
                 return jsonify({"error": str(e)}), 500
 
-        @self.app.route(
-            "/api/average-comments-by-date-platform", methods=["GET"]
-        )
+        @self.app.route("/api/average-comments-by-date-platform", methods=["GET"])
         def get_average_comments_by_date_platform():
             """Get average comments by date and platform"""
             try:
-                comments_data = (
-                    self.data_store.get_average_comments_by_date_platform()
-                )
+                comments_data = self.data_store.get_average_comments_by_date_platform()
 
                 return jsonify(
                     {
@@ -426,27 +389,18 @@ class BackendApp:
                 )
                 return jsonify({"error": str(e)}), 500
 
-        @self.app.route(
-            "/api/average-shares-by-date-platform", methods=["GET"]
-        )
+        @self.app.route("/api/average-shares-by-date-platform", methods=["GET"])
         def get_average_shares_by_date_platform():
             """Get average shares by date and platform"""
             try:
-                shares_data = (
-                    self.data_store.get_average_shares_by_date_platform()
-                )
+                shares_data = self.data_store.get_average_shares_by_date_platform()
 
                 return jsonify(
-                    {
-                        "success": True,
-                        "average_shares_by_date_platform": shares_data
-                    }
+                    {"success": True, "average_shares_by_date_platform": shares_data}
                 )
 
             except Exception as e:
-                logger.error(
-                    f"Error getting average shares by date and platform: {e}"
-                )
+                logger.error(f"Error getting average shares by date and platform: {e}")
                 return jsonify({"error": str(e)}), 500
 
         @self.app.route("/api/shares-by-post-type", methods=["GET"])
@@ -455,10 +409,7 @@ class BackendApp:
             try:
                 shares_data = self.data_store.get_shares_by_post_type()
 
-                return jsonify({
-                    "success": True,
-                    "shares_by_post_type": shares_data
-                })
+                return jsonify({"success": True, "shares_by_post_type": shares_data})
 
             except Exception as e:
                 logger.error(f"Error getting shares by post type: {e}")
@@ -473,14 +424,10 @@ class BackendApp:
                 post_type_filter = request.args.get("post_type")
 
                 tree_data = self.data_store.get_decomposition_tree_data(
-                    platform_filter=platform_filter,
-                    post_type_filter=post_type_filter
+                    platform_filter=platform_filter, post_type_filter=post_type_filter
                 )
 
-                return jsonify({
-                    "success": True,
-                    "decomposition_tree_data": tree_data
-                })
+                return jsonify({"success": True, "decomposition_tree_data": tree_data})
 
             except Exception as e:
                 logger.error(f"Error getting decomposition tree data: {e}")

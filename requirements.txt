@@ -7,3 +7,4 @@ plotly==5.17.0
 streamlit==1.29.0
 requests==2.31.0
 apscheduler==3.10.4
+black==23.9.1
