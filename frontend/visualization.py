@@ -622,8 +622,7 @@ class DashboardApp:
                 x="Post Type",
                 y="Count",
                 color="Sentiment",
-                title="📊 Sentiment Distribution by Post Type "
-                "(Stacked Column Chart)",
+                title="📊 Sentiment Distribution by Post Type (Stacked Column Chart)",
                 barmode="stack",
                 color_discrete_map={
                     "Positive": "#1f77b4",  # Blue

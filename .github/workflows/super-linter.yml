@@ -14,6 +14,9 @@ jobs:
       - name: Upgrade mypy
         run: pip install --upgrade mypy
 
+      - name: Create mypy cache
+        run: mkdir -p .mypy_cache
+
       - name: Run Super Linter
         uses: github/super-linter@v5
         env:
