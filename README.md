@@ -1,3 +1,6 @@
+<img width="1721" height="696" alt="image" src="https://github.com/user-attachments/assets/1cfa155b-0e47-4feb-9a3b-8a62d40bc1ff" />
+
+
 # Social Media Analytics Dashboard
 
 A comprehensive social media analytics platform that provides real-time insights into social media engagement, sentiment analysis, and performance metrics across multiple platforms.
