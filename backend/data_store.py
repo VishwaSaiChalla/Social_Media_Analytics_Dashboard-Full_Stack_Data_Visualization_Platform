@@ -25,6 +25,7 @@ class SocialMediaDataStore:
             connection_string: MongoDB connection string
             database_name: Name of the database
         """
+        logger.info("Start the Functionality here");
         logger.info(f"Initializing SocialMediaDataStore with database: {database_name}")
         self.connection_string = connection_string
         self.database_name = database_name
