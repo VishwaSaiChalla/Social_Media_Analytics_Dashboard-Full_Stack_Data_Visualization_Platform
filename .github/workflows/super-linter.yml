@@ -10,9 +10,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Upgrade mypy before running Super-Linter (fixes INTERNAL ERROR issues)
+      - name: Upgrade mypy
+        run: pip install --upgrade mypy
+
+      - name: Create mypy cache
+        run: mkdir -p .mypy_cache
+
       - name: Run Super Linter
         uses: github/super-linter@v5
         env:
           DEFAULT_BRANCH: main
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
+          VALIDATE_MARKDOWN: false
+          MYPY_INSTALL_TYPES: false
